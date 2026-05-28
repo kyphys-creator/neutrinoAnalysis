@@ -141,10 +141,12 @@ class _OSQPBackend:
     """
     name = 'osqp'
 
+    # eps 1e-8 is plenty here (χ² agrees with 1e-10 to ~1e-17) and converges in
+    # ~25 ADMM iterations instead of ~90 000, so the free solve is ~1000× faster.
     DEFAULT_OPTS = dict(
-        eps_abs=1e-10, eps_rel=1e-10,
-        eps_prim_inf=1e-10, eps_dual_inf=1e-10,
-        max_iter=400000,
+        eps_abs=1e-8, eps_rel=1e-8,
+        eps_prim_inf=1e-9, eps_dual_inf=1e-9,
+        max_iter=20000,
         polish=True, polish_refine_iter=10,
         adaptive_rho=True,
         scaling=20,           # more scaling iterations → better conditioning
@@ -299,23 +301,30 @@ class _OSQPBackend:
         if display:
             opts['verbose'] = True
 
-        # Try OSQP first (very fast). If it reports inaccurate or fails,
-        # fall back to CLARABEL (slower but more robust on near-degenerate
-        # problems).
+        _ok = ('optimal', 'optimal_inaccurate')
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')   # squelch "solution may be inaccurate"
-            try:
-                prob.solve(solver=cp.OSQP, **opts)
-            except Exception:
-                prob.status = 'solver_error'
-
-        if prob.status not in ('optimal',) or self._y.value is None:
-            # Retry with CLARABEL — no warm-start support, but very accurate.
-            try:
-                prob.solve(solver=cp.CLARABEL, verbose=display)
-            except Exception:
-                pass
+            # OSQP (ADMM) is fast on the free QP but does not converge on the
+            # fixed-parameter QP at this size — it burns through max_iter
+            # (~5 s) before failing. CLARABEL (interior point) solves the fixed
+            # case in ~10 ms, so go straight to it there and skip the futile
+            # OSQP attempt.
+            if fixed_index is None:
+                try:
+                    prob.solve(solver=cp.OSQP, **opts)
+                except Exception:
+                    prob.status = 'solver_error'
+                if prob.status not in _ok or self._y.value is None:
+                    try:
+                        prob.solve(solver=cp.CLARABEL, verbose=display)
+                    except Exception:
+                        pass
+            else:
+                try:
+                    prob.solve(solver=cp.CLARABEL, verbose=display)
+                except Exception:
+                    prob.status = 'solver_error'
 
         if self._y.value is None:
             return _Result(np.full(self.p.n, np.nan), np.nan,
