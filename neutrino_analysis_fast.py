@@ -172,7 +172,8 @@ class _OSQPBackend:
         # that face — a smooth ramp. The physically meaningful estimate is a
         # *vertex* (piecewise-constant flux), found by a simplex method. After
         # the QP fixes the unique fitted values μ = M·x, a HiGHS-simplex LP over
-        # {M·x = μ, monotone, x ≥ 0} returns such a vertex.
+        # {M·x = μ, monotone, x ≥ 0} with a tail-weighted objective returns such
+        # a vertex, with the high-energy tail driven to zero (see ``_build_lp``).
         self.vertex_select = True
 
     def reset_cache(self):
@@ -225,12 +226,20 @@ class _OSQPBackend:
         """
         Vertex-selection LP: among all fluxes reproducing the fitted values
         μ = M_s·x (parameter ``mu_par``), pick a vertex of the monotone polytope
-        by minimising Σx with a simplex method. ``mu_par`` is the only thing that
-        changes between data vectors, so one LP per ``fixed_index`` is cached.
+        with a simplex method. ``mu_par`` is the only thing that changes between
+        data vectors, so one LP per ``fixed_index`` is cached.
+
+        Objective: minimise Σ Rⁱ⁄⁽ⁿ⁻¹⁾·xᵢ — a geometrically tail-weighted sum.
+        This pushes the high-energy (high-index) flux down to zero, reproducing
+        the scipy staircase whose tail vanishes, rather than leaving a non-zero
+        floor (which a plain Σx would, since zeroing the tail costs total flux).
+        The leading weight is 1 (not 0), so the head is not artificially inflated
+        the way a weight like Σ i·xᵢ would do. The result is insensitive to R.
         """
         p = self.p
         n, m = p.n, p.m
         M_s = p.M_matrix / p.c
+        tail_w = 1000.0 ** (np.arange(n) / max(n - 1, 1))
         x = cp.Variable(n, nonneg=True)
         mu_par = cp.Parameter(m)
         cons = [M_s @ x == mu_par, x[:-1] >= x[1:]]
@@ -238,7 +247,7 @@ class _OSQPBackend:
         if fixed_index is not None:
             fv_par = cp.Parameter()
             cons.append(x[fixed_index] == fv_par)
-        prob = cp.Problem(cp.Minimize(cp.sum(x)), cons)
+        prob = cp.Problem(cp.Minimize(tail_w @ x), cons)
         return prob, x, mu_par, fv_par
 
     def _get_lp(self, fixed_index):
