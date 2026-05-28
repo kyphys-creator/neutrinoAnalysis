@@ -302,33 +302,35 @@ class _OSQPBackend:
             opts['verbose'] = True
 
         _ok = ('optimal', 'optimal_inaccurate')
+        # Solver order. Free QP: OSQP (fast ADMM) first. Fixed-parameter QP:
+        # OSQP does not converge (burns max_iter ~5 s), so lead with CLARABEL.
+        # CLARABEL is fast but at extreme fixed values it sits on the edge of
+        # 'optimal_inaccurate' and occasionally throws a hard SolverError, so
+        # keep SCS (robust) and OSQP as ordered backups. cvxpy's status is a
+        # read-only property, so failure is tracked in a local variable.
+        if fixed_index is None:
+            attempts = [(cp.OSQP, opts), (cp.CLARABEL, {}), (cp.SCS, {})]
+        else:
+            attempts = [(cp.CLARABEL, {}), (cp.SCS, {}), (cp.OSQP, opts)]
+
+        status = 'solver_error'
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')   # squelch "solution may be inaccurate"
-            # OSQP (ADMM) is fast on the free QP but does not converge on the
-            # fixed-parameter QP at this size — it burns through max_iter
-            # (~5 s) before failing. CLARABEL (interior point) solves the fixed
-            # case in ~10 ms, so go straight to it there and skip the futile
-            # OSQP attempt.
-            if fixed_index is None:
+            for solver, extra in attempts:
+                kw = dict(extra)
+                kw.setdefault('verbose', display)
                 try:
-                    prob.solve(solver=cp.OSQP, **opts)
+                    prob.solve(solver=solver, **kw)
+                    status = prob.status
                 except Exception:
-                    prob.status = 'solver_error'
-                if prob.status not in _ok or self._y.value is None:
-                    try:
-                        prob.solve(solver=cp.CLARABEL, verbose=display)
-                    except Exception:
-                        pass
-            else:
-                try:
-                    prob.solve(solver=cp.CLARABEL, verbose=display)
-                except Exception:
-                    prob.status = 'solver_error'
+                    status = 'solver_error'
+                if status in _ok and self._y.value is not None and prob.value is not None:
+                    break
 
-        if self._y.value is None:
-            return _Result(np.full(self.p.n, np.nan), np.nan,
-                           success=False, status=prob.status, nit=0)
+        if status not in _ok or self._y.value is None or prob.value is None:
+            return _Result(np.full(self.p.n, np.nan), np.inf,
+                           success=False, status=status, nit=0)
         x = D * self._y.value
         fun = float(prob.value) * self.p.c
 
@@ -343,8 +345,8 @@ class _OSQPBackend:
         return _Result(
             x=np.array(x),
             fun=fun,
-            success=prob.status in ('optimal', 'optimal_inaccurate'),
-            status=prob.status,
+            success=True,
+            status=status,
             nit=int(prob.solver_stats.num_iters) if prob.solver_stats else 0,
         )
 
@@ -686,11 +688,11 @@ class NeutrinoAnalysis:
 
         if fixed_index < 2:
             fixed_values = np.append(
-                np.linspace(0.6e12 / self.cm ** 2 / self.sec,
-                            1.35e12 / self.cm ** 2 / self.sec,
+                np.linspace(8.089268e+11 / self.cm ** 2 / self.sec,
+                            base_value,
                             num_points)[:-1],
-                np.linspace(1.35e12 / self.cm ** 2 / self.sec,
-                            7e13 / self.cm ** 2 / self.sec, num_points)
+                np.linspace(base_value,
+                            2.157467e+13 / self.cm ** 2 / self.sec, num_points)
             )
         elif fixed_index < 7:
             fixed_values = np.linspace((1 - scan_range) * base_value,
