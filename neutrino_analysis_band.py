@@ -744,6 +744,123 @@ class NeutrinoAnalysis:
             })
         return results
 
+    # ---------- confidence band by root finding ----------
+    def _band_eval(self, fixed_index, v, levels, num_pseudo_data, seed, n_jobs, cache):
+        """
+        Evaluate one fixed value: run the Monte Carlo once and return, for every
+        confidence level, whether ``v`` is inside the band plus the observed Δχ²
+        and the cutoff. Results are cached by ``v`` (deterministic when ``seed``
+        is fixed), so the bisection never recomputes a point.
+        """
+        key = round(float(v), 9)
+        if key in cache:
+            return cache[key]
+        self.run_full_monte_carlo_analysis(
+            num_pseudo_data=num_pseudo_data, fixed_index=fixed_index,
+            fixed_value=float(v), seed=seed, n_jobs=n_jobs, verbose=False,
+        )
+        dchi2_obs = self.best_fit_chi2_fixed / self.c - self.best_fit_chi2 / self.c
+        included, cutoff = {}, {}
+        for lv in levels:
+            included[lv] = self.analyze_monte_carlo_results(float(v), lv)
+            cutoff[lv] = self.delta_chi2_cutoff
+        res = {'v': float(v), 'dchi2_obs': dchi2_obs,
+               'included': included, 'cutoff': cutoff}
+        cache[key] = res
+        return res
+
+    def _bisect_edge(self, fixed_index, level, v_in, v_out, levels,
+                     n_pseudo_edge, rel_tol, seed, n_jobs, cache):
+        """Geometric bisection between v_in (inside band) and v_out (outside)."""
+        a, b = float(v_in), float(v_out)
+        for _ in range(40):
+            if abs(b - a) <= rel_tol * max(abs(b), abs(a)):
+                break
+            m = np.sqrt(a * b) if (a > 0 and b > 0) else 0.5 * (a + b)
+            r = self._band_eval(fixed_index, m, levels, n_pseudo_edge,
+                                seed, n_jobs, cache)
+            if r['included'][level]:
+                a = m
+            else:
+                b = m
+        return 0.5 * (a + b)
+
+    def find_confidence_band(self, fixed_index, levels=(0.678, 0.90, 0.954),
+                             num_pseudo_data=30, n_pseudo_edge=200,
+                             step=1.5, rel_tol=0.03, max_bracket=25,
+                             seed=42, n_jobs=1, verbose=True):
+        """
+        Locate the confidence-band edges for one flux parameter by root finding
+        instead of a uniform grid. The widest level brackets the outer edges;
+        each level's edge is then pinned by geometric bisection, with more
+        pseudo-data (``n_pseudo_edge``) used during refinement to tame the
+        Monte-Carlo noise in the cutoff. ``seed`` is fixed so each value is
+        reproducible (keeps the bisection from jittering).
+
+        Returns a dict: per level a (lower, upper) pair in raw units, plus the
+        same in physical units, and the best-fit value.
+        """
+        if self.result is None:
+            self.optimize(self.data_vector)
+        levels = tuple(sorted(levels))
+        widest = levels[-1]
+        v0 = float(self.result.x[fixed_index])
+        unit = self.cm ** 2 * self.sec
+        cache = {}
+
+        r0 = self._band_eval(fixed_index, v0, levels, num_pseudo_data,
+                             seed, n_jobs, cache)
+        if not r0['included'][widest] and verbose:
+            print(f"[warn] best-fit value v0={v0:.4g} is already outside the "
+                  f"{widest:.3f} band — check the construction.")
+        if verbose:
+            print(f"[band idx={fixed_index}] v0={unit*v0:.4e} (phys), "
+                  f"bracketing with step={step}")
+
+        # Bracket outward until excluded at the widest level.
+        def bracket(direction):
+            v = v0
+            for _ in range(max_bracket):
+                v = v * step if direction > 0 else v / step
+                if v <= 0:
+                    return None
+                r = self._band_eval(fixed_index, v, levels, num_pseudo_data,
+                                    seed, n_jobs, cache)
+                if not r['included'][widest]:
+                    return v
+            return None
+
+        up_out = bracket(+1)
+        lo_out = bracket(-1)
+        if verbose:
+            print(f"  upper bracket: {unit*up_out:.4e}" if up_out else
+                  "  upper edge unbounded (still inside at max_bracket)")
+            print(f"  lower bracket: {unit*lo_out:.4e}" if lo_out else
+                  "  lower edge reaches 0 / unbounded below")
+
+        band_raw, band_phys = {}, {}
+        for lv in levels:
+            upper = (self._bisect_edge(fixed_index, lv, v0, up_out, levels,
+                                       n_pseudo_edge, rel_tol, seed, n_jobs, cache)
+                     if up_out is not None else np.inf)
+            lower = (self._bisect_edge(fixed_index, lv, v0, lo_out, levels,
+                                       n_pseudo_edge, rel_tol, seed, n_jobs, cache)
+                     if lo_out is not None else 0.0)
+            band_raw[lv] = (lower, upper)
+            band_phys[lv] = (lower * unit, upper * unit)
+            if verbose:
+                print(f"  level {lv:.3f}: [{lower*unit:.4e}, {upper*unit:.4e}] (phys)")
+
+        return {
+            'index': fixed_index,
+            'best_fit_raw': v0,
+            'best_fit_physical': v0 * unit,
+            'levels': levels,
+            'band_raw': band_raw,
+            'band_physical': band_phys,
+            'n_evaluations': len(cache),
+        }
+
     # ---------- plotting ----------
     def _calculate_integrated_flux(self):
         def dPhidEnu(E):
