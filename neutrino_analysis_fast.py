@@ -164,7 +164,20 @@ class _OSQPBackend:
         # status='optimal'. D is data-independent, so the parameterised
         # (DPP) problem can still be re-solved fast across pseudo-data.
         self._y = cp.Variable(parent.n, nonneg=True)
-        self._cache = {}  # keyed by fixed_index
+        self._cache = {}     # QP problems, keyed by fixed_index
+        self._lp_cache = {}  # vertex-selection LPs, keyed by fixed_index
+        # The χ² minimiser is a high-dimensional face of the feasible polytope
+        # whenever n > rank(M) (here 180 params vs 29 bins). OSQP/CLARABEL are
+        # interior-point/ADMM methods that return a *relative-interior* point of
+        # that face — a smooth ramp. The physically meaningful estimate is a
+        # *vertex* (piecewise-constant flux), found by a simplex method. After
+        # the QP fixes the unique fitted values μ = M·x, a HiGHS-simplex LP over
+        # {M·x = μ, monotone, x ≥ 0} returns such a vertex.
+        self.vertex_select = True
+
+    def reset_cache(self):
+        self._cache.clear()
+        self._lp_cache.clear()
 
     def _column_scale(self):
         M_s = self.p.M_matrix / self.p.c
@@ -207,6 +220,45 @@ class _OSQPBackend:
         if fixed_index not in self._cache:
             self._cache[fixed_index] = self._build_problem(fixed_index)
         return self._cache[fixed_index]
+
+    def _build_lp(self, fixed_index):
+        """
+        Vertex-selection LP: among all fluxes reproducing the fitted values
+        μ = M_s·x (parameter ``mu_par``), pick a vertex of the monotone polytope
+        by minimising Σx with a simplex method. ``mu_par`` is the only thing that
+        changes between data vectors, so one LP per ``fixed_index`` is cached.
+        """
+        p = self.p
+        n, m = p.n, p.m
+        M_s = p.M_matrix / p.c
+        x = cp.Variable(n, nonneg=True)
+        mu_par = cp.Parameter(m)
+        cons = [M_s @ x == mu_par, x[:-1] >= x[1:]]
+        fv_par = None
+        if fixed_index is not None:
+            fv_par = cp.Parameter()
+            cons.append(x[fixed_index] == fv_par)
+        prob = cp.Problem(cp.Minimize(cp.sum(x)), cons)
+        return prob, x, mu_par, fv_par
+
+    def _get_lp(self, fixed_index):
+        if fixed_index not in self._lp_cache:
+            self._lp_cache[fixed_index] = self._build_lp(fixed_index)
+        return self._lp_cache[fixed_index]
+
+    def _select_vertex(self, x_interior, fixed_index, fixed_value):
+        """Return a piecewise-constant vertex with the same fit as ``x_interior``."""
+        M_s = self.p.M_matrix / self.p.c
+        mu = M_s @ x_interior
+        prob, x, mu_par, fv_par = self._get_lp(fixed_index)
+        mu_par.value = mu
+        if fixed_index is not None:
+            fv_par.value = float(fixed_value)
+        try:
+            prob.solve(solver=cp.HIGHS)
+        except Exception:
+            return None
+        return x.value if prob.status in ('optimal', 'optimal_inaccurate') else None
 
     def _set_data_params(self, data, w_par, z_par):
         """Fill in the cvxpy Parameters from a (scaled) data vector."""
@@ -261,6 +313,15 @@ class _OSQPBackend:
                            success=False, status=prob.status, nit=0)
         x = D * self._y.value
         fun = float(prob.value) * self.p.c
+
+        # Replace the interior (ramp) solution with a piecewise-constant vertex
+        # that has the identical fit, so the OSQP backend matches the staircase
+        # shape the scipy backend produces. χ² (``fun``) is unchanged.
+        if self.vertex_select:
+            xv = self._select_vertex(x, fixed_index, fixed_value)
+            if xv is not None:
+                x = xv
+
         return _Result(
             x=np.array(x),
             fun=fun,
@@ -430,7 +491,7 @@ class NeutrinoAnalysis:
                                                      self._inv_d_default)
 
         if hasattr(self, '_backend') and self._backend.name == 'osqp':
-            self._backend._cache.clear()
+            self._backend.reset_cache()
 
     def _make_dmb_inv(self, data):
         safe = np.where(data > 0, data, 1.0)
