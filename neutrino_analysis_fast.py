@@ -20,6 +20,8 @@ benchmarks). They share the same public API, so user-level scripts do not
 need to change other than passing ``solver=...``.
 """
 
+import os
+
 import numpy as np
 from scipy.optimize import minimize, LinearConstraint
 from scipy import integrate
@@ -673,6 +675,7 @@ class NeutrinoAnalysis:
         plt.title('Optimized Neutrino Flux vs. Theoretical Models')
         plt.legend(); plt.grid(True, which="both", ls="--")
         if save:
+            os.makedirs(f'scenario_bkg_{self.background_scenario}', exist_ok=True)
             fn = f'scenario_bkg_{self.background_scenario}/flux_comparison_bkg_{self.background_scenario}.pdf'
             plt.savefig(fn); print(f"Plot saved as {fn}")
 
@@ -705,6 +708,7 @@ class NeutrinoAnalysis:
         plt.xlim(fv[0], fv[np.array(chi_sq_results) <= 1e2][-1])
         plt.ylim(1e-5, 1e2); plt.legend(loc='lower right', ncol=1, fontsize=9); plt.yscale('log')
         if save:
+            os.makedirs(f'scenario_bkg_{self.background_scenario}', exist_ok=True)
             fn = f'scenario_bkg_{self.background_scenario}/scan_param_{index}_bkg_{self.background_scenario}.pdf'
             plt.savefig(fn); print(f"Scan plot saved as {fn}")
 
