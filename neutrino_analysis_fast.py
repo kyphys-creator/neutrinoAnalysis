@@ -157,8 +157,20 @@ class _OSQPBackend:
                 "solver='osqp' requires cvxpy. Install with: pip install cvxpy osqp"
             )
         self.p = parent
-        self._x = cp.Variable(parent.n, nonneg=True)
-        self._cache = {}  # keyed by (id(data), fixed_index)
+        # Internal variable ``y`` is the *column-scaled* flux: x = D ⊙ y, with
+        # D = 1/‖M_s column‖. Without this rescaling the optimal x (~1e7) and
+        # the design-matrix columns (~1e-6) span ~13 orders of magnitude, and
+        # OSQP/CLARABEL both terminate early at a wrong point while reporting
+        # status='optimal'. D is data-independent, so the parameterised
+        # (DPP) problem can still be re-solved fast across pseudo-data.
+        self._y = cp.Variable(parent.n, nonneg=True)
+        self._cache = {}  # keyed by fixed_index
+
+    def _column_scale(self):
+        M_s = self.p.M_matrix / self.p.c
+        cn = np.linalg.norm(M_s, axis=0)
+        cn[cn == 0] = 1.0
+        return 1.0 / cn
 
     def _build_problem(self, fixed_index):
         """
@@ -169,25 +181,27 @@ class _OSQPBackend:
         """
         p = self.p
         n, m = p.n, p.m
-        x = self._x
+        y = self._y
+        D = self._column_scale()
 
         # cvxpy Parameters: w (per-bin weight √(T/d_s)) and z (w * dmb_s).
-        # Residual = w ⊙ (M_s @ x) − z.
+        # Residual = w ⊙ (M_s·D ⊙ y) − z, solving for the scaled variable y.
         w_par = cp.Parameter(m, nonneg=True)
         z_par = cp.Parameter(m)
-        M_s = p.M_matrix / p.c        # constant matrix, scaled once
+        MsD = (p.M_matrix / p.c) * D[None, :]   # constant, scaled once
 
-        residual = cp.multiply(w_par, M_s @ x) - z_par
+        residual = cp.multiply(w_par, MsD @ y) - z_par
         obj = cp.Minimize(cp.sum_squares(residual))
-        cons = [x[:-1] >= x[1:]]
+        # Ordering on the physical flux x = D ⊙ y.
+        cons = [cp.multiply(D[:-1], y[:-1]) >= cp.multiply(D[1:], y[1:])]
 
         fv_param = None
         if fixed_index is not None:
             fv_param = cp.Parameter()
-            cons.append(x[fixed_index] == fv_param)
+            cons.append(D[fixed_index] * y[fixed_index] == fv_param)
 
         prob = cp.Problem(obj, cons)
-        return prob, w_par, z_par, fv_param
+        return prob, w_par, z_par, fv_param, D
 
     def _get_problem(self, fixed_index):
         if fixed_index not in self._cache:
@@ -213,12 +227,12 @@ class _OSQPBackend:
         if fixed_index is None and extra_constraints:
             fixed_index, fixed_value = self._extract_fixed(extra_constraints)
 
-        prob, w_par, z_par, fv_param = self._get_problem(fixed_index)
+        prob, w_par, z_par, fv_param, D = self._get_problem(fixed_index)
         self._set_data_params(data, w_par, z_par)
         if fixed_index is not None:
             fv_param.value = float(fixed_value)
         if x0 is not None:
-            self._x.value = np.asarray(x0, dtype=float)
+            self._y.value = np.asarray(x0, dtype=float) / D
 
         opts = dict(self.DEFAULT_OPTS)
         if display:
@@ -235,17 +249,17 @@ class _OSQPBackend:
             except Exception:
                 prob.status = 'solver_error'
 
-        if prob.status not in ('optimal',) or self._x.value is None:
+        if prob.status not in ('optimal',) or self._y.value is None:
             # Retry with CLARABEL — no warm-start support, but very accurate.
             try:
                 prob.solve(solver=cp.CLARABEL, verbose=display)
             except Exception:
                 pass
 
-        x = self._x.value
-        if x is None:
+        if self._y.value is None:
             return _Result(np.full(self.p.n, np.nan), np.nan,
                            success=False, status=prob.status, nit=0)
+        x = D * self._y.value
         fun = float(prob.value) * self.p.c
         return _Result(
             x=np.array(x),
