@@ -21,6 +21,8 @@ need to change other than passing ``solver=...``.
 """
 
 import os
+import glob
+import json
 
 import numpy as np
 from scipy.optimize import minimize, LinearConstraint
@@ -899,6 +901,100 @@ class NeutrinoAnalysis:
             fn = f'scenario_bkg_{self.background_scenario}/flux_comparison_bkg_{self.background_scenario}.pdf'
             plt.savefig(fn); print(f"Plot saved as {fn}")
 
+    # ---------- confidence band: save / batch / overlay ----------
+    def save_band(self, band, outdir='bands', fname=None):
+        """Write one ``find_confidence_band`` result to JSON (one file per index)."""
+        os.makedirs(outdir, exist_ok=True)
+        if fname is None:
+            fname = f'band_bkg{self.background_scenario}_idx{band["index"]:03d}.json'
+        path = os.path.join(outdir, fname)
+        obj = {
+            'index': int(band['index']),
+            'background_scenario': self.background_scenario,
+            'best_fit_raw': float(band['best_fit_raw']),
+            'best_fit_physical': float(band['best_fit_physical']),
+            'levels': [float(l) for l in band['levels']],
+            'band_raw': {f'{float(l):.6f}': [float(lo), float(hi)]
+                         for l, (lo, hi) in band['band_raw'].items()},
+            'band_physical': {f'{float(l):.6f}': [float(lo), float(hi)]
+                              for l, (lo, hi) in band['band_physical'].items()},
+            'n_evaluations': int(band.get('n_evaluations', 0)),
+        }
+        with open(path, 'w') as f:
+            json.dump(obj, f, indent=2)
+        print(f"Band saved as {path}")
+        return path
+
+    def find_and_save_band(self, fixed_index, outdir='bands', **kwargs):
+        """Run ``find_confidence_band`` for one index and save it immediately."""
+        band = self.find_confidence_band(fixed_index, **kwargs)
+        self.save_band(band, outdir=outdir)
+        return band
+
+    def plot_flux_with_bands(self, band_files, levels=None, save=True,
+                             fname=None, ylim=None):
+        """
+        Overlay saved confidence bands on the optimized flux. ``band_files`` is a
+        list of JSON paths or a glob pattern (e.g. ``'bands/band_*idx*.json'``).
+        Each band is drawn as an asymmetric error bar at its energy bin, one
+        colour per level. ``self.optimize`` must have been run first so the
+        scatter and band centres line up.
+        """
+        if self.result is None:
+            raise RuntimeError("Run optimize() before plotting.")
+        if isinstance(band_files, str):
+            band_files = sorted(glob.glob(band_files))
+        bands = [load_band(p) for p in band_files]
+        if not bands:
+            raise RuntimeError("No band files found.")
+
+        eb = np.linspace(0.41, 2, self.n)
+        unit = self.cm ** 2 * self.sec
+        x, Phi, x2, Phidashed = self._calculate_integrated_flux()
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(x,  Phi,       color='red',   label='With neutron capture')
+        plt.plot(x2, Phidashed, color='brown', ls='dashed', label='Without neutron capture')
+        plt.scatter(eb, self.result.x * unit, s=3, color='black', zorder=5,
+                    label=f'Optimized Flux (Bkg: {self.background_scenario})')
+
+        all_levels = levels if levels is not None else sorted(
+            {l for b in bands for l in b['levels']})
+        cyc = ['C2', 'C1', 'C0', 'C3', 'C4']
+        level_colors = {lv: cyc[k % len(cyc)]
+                        for k, lv in enumerate(sorted(all_levels, reverse=True))}
+
+        labeled = set()
+        for b in bands:
+            xpos = eb[b['index']]
+            c = b['best_fit_physical']
+            for lv in sorted(b['levels'], reverse=True):
+                if levels is not None and lv not in levels:
+                    continue
+                lo, hi = b['band_physical'][lv]
+                lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
+                hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
+                lab = None
+                if lv not in labeled:
+                    lab = f'{lv:.3f} band'
+                    labeled.add(lv)
+                plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
+                             fmt='none', ecolor=level_colors[lv], elinewidth=1.5,
+                             capsize=2, alpha=0.7, zorder=4, label=lab)
+
+        plt.xscale('log'); plt.xlim(0.1, 2)
+        if ylim is not None:
+            plt.ylim(*ylim)
+        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(r"$\Phi$ [cm$^{-2}$sec$^{-1}$]")
+        plt.title('Optimized Neutrino Flux with Confidence Bands')
+        plt.legend(fontsize=8); plt.grid(True, which="both", ls="--")
+        if save:
+            os.makedirs(f'scenario_bkg_{self.background_scenario}', exist_ok=True)
+            if fname is None:
+                fname = (f'scenario_bkg_{self.background_scenario}/'
+                         f'flux_with_bands_bkg_{self.background_scenario}.pdf')
+            plt.savefig(fname); print(f"Plot saved as {fname}")
+
     def plot_scan_results(self, index, fixed_values, chi_sq_results, save=True):
         plt.figure(figsize=(8, 6))
         fv = fixed_values * (self.cm ** 2 * self.sec)
@@ -934,7 +1030,17 @@ class NeutrinoAnalysis:
 
 
 # -------------------------------------------------------------------
-# Module-level helper kept for backward compatibility
+# Module-level helpers
 # -------------------------------------------------------------------
 def scan_parameter(analysis, data, index, num_points=21, scan_range=0.35):
     return analysis.scan_parameter(data, index, num_points=num_points, scan_range=scan_range)
+
+
+def load_band(path):
+    """Load a band JSON written by ``NeutrinoAnalysis.save_band``."""
+    with open(path) as f:
+        obj = json.load(f)
+    obj['levels'] = tuple(float(l) for l in obj['levels'])
+    obj['band_raw'] = {float(k): tuple(v) for k, v in obj['band_raw'].items()}
+    obj['band_physical'] = {float(k): tuple(v) for k, v in obj['band_physical'].items()}
+    return obj
