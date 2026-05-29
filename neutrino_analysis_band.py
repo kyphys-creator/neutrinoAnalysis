@@ -456,7 +456,7 @@ class NeutrinoAnalysis:
         bb    = self._compute_bi(A=460 * self.eV / self.keV * d, B=10, C=100 * self.eV / self.keV * d)
         b2    = self._compute_bi(A=920 * self.eV / self.keV * d, B=10, C=200 * self.eV / self.keV * d)
         bc    = self._compute_bi(A=50  * self.eV / self.keV * d, B=10, C=20  * self.eV / self.keV * d)
-        bflat = self._compute_bi(A=0   * self.eV / self.keV * d, B=10, C=100 * self.eV / self.keV * d)
+        bflat = self._compute_bi(A=0   * self.eV / self.keV * d, B=10, C=1 * self.eV / self.keV * d)
         self.background_df = pd.DataFrame({
             "Bin Start [eV]": self.bins[:-1], "Bin End [eV]": self.bins[1:],
             "b_i (a)": ba, "b_i (b)": bb, "b_i (c)": bc,
