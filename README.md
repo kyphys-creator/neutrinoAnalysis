@@ -10,14 +10,16 @@
 
 ```
 neutrino_analysis_fast.py   # 本体。scipy / osqp の 2 バックエンド
-neutrino_analysis_band.py   # fast のコピー + 信頼バンドの根探索 (find_confidence_band)
+neutrino_analysis_band.py   # fast + 信頼バンドの根探索・保存・比較プロット
 montecarlo.ipynb            # 最適化・スキャンの使用例
 confidence_band.ipynb       # 信頼バンド探索・保存・オーバーレイの使用例
+confidence_band_flat/_Bkg/_noBkg.ipynb  # シナリオ別のバンド計算
+comparison.ipynb            # 複数シナリオのバンド比較
 CRmat/originalUnit/         # 応答行列 CRmat<intervals>_originalUnit.csv
 Ratebin/                    # Ratebin2 / Ratebin7 (観測レート)
 Danny’s files/              # 理論フラックス曲線 (fig1-solid / fig1-dashed ほか)
 scenario_bkg_<x>/           # プロットの保存先 (実行時に自動生成)
-bands/                      # 信頼バンド JSON の保存先 (実行時に自動生成)
+scenario_bkg_<x>/bands/     # 信頼バンド JSON の保存先 (実行時に自動生成)
 ```
 
 実行時のカレントディレクトリにこれらのデータフォルダが必要。
@@ -104,17 +106,57 @@ band = a.find_confidence_band(
 
 ```python
 for idx in [0, 5, 10, 20, 40]:
-    a.find_and_save_band(idx, outdir='bands',
-                         num_pseudo_data=20, n_pseudo_edge=200, seed=42)
+    a.find_and_save_band(idx, outdir='scenario_bkg_flat/bands',
+                         num_pseudo_data=50, n_pseudo_edge=500,
+                         step=1.5, rel_tol=0.03, seed=42)
 
 # 保存したバンドを optimize 結果の上に重ねる
-a.plot_flux_with_bands(f'bands/band_bkg{a.background_scenario}_idx*.json',
+a.plot_flux_with_bands('scenario_bkg_flat/bands/band_*.json',
                        levels=(0.678, 0.90, 0.954), ylim=(0, 3e13))
 ```
 
 - `save_band` / `load_band` … バンドを 1 インデックス 1 ファイルの JSON で保存・読込
+- `find_and_save_band` … 1 インデックスを探索して即保存
 - `plot_flux_with_bands` … 保存済みバンドを各インデックスの誤差棒として散布図に重ねる
   （バンド中心は保存時の `self.result.x[index]` なので最適フラックスと一致）
+
+### 複数シナリオのバンドを重ねて比較
+
+```python
+a_flat = NeutrinoAnalysis(background_scenario='flat', intervals='180',
+                          GeV=0.32e16, solver='osqp'); a_flat.optimize(a_flat.data_vector)
+a_a    = NeutrinoAnalysis(background_scenario='a',    intervals='180',
+                          GeV=0.32e16, solver='osqp'); a_a.optimize(a_a.data_vector)
+
+a_flat.plot_band_comparison(
+    {'flat': 'scenario_bkg_flat/bands/band_*.json',
+     'a':    'scenario_bkg_a/bands/band_*.json'},
+    level=0.954,
+    optimized={'flat': a_flat, 'a': a_a},   # 各シナリオの optimize 結果も重ねる
+    ylim=(0, 3e13), save=True,
+)
+```
+
+- 各シナリオを別色の誤差棒で重ねる。バンドは物理単位なので GeV 単位の違いに依らず比較可能。
+- `optimized` に `{ラベル: NeutrinoAnalysis または flux 配列}` を渡すと、最適フラックス散布図を
+  バンドと同色で重ねる（ラベルを `groups` と一致させると同色になる）。
+
+## バンド探索パラメータの指針
+
+| 引数 | 役割 | 推奨 |
+|---|---|---|
+| `num_pseudo_data` | ブラケット段階の擬似データ数 | 要求パーセンタイルを表現できる数。2σ なら **≥50** |
+| `n_pseudo_edge` | 端の二分法での擬似データ数（cutoff 精度） | **≥500**（seed 依存ノイズが収束） |
+| `step` | ブラケットの拡大率（到達範囲 `v0·step^max_bracket`） | **1.5**。小さすぎ（例 1.05）+ 既定 `max_bracket=25` だと遠い上端に届かず端が `inf` になる |
+| `rel_tol` | 端の相対許容幅（端の分解能） | 0.03。**これ以下の桁の差は意味を持たない** |
+| `seed` | 乱数固定（二分法の再現性） | 固定する |
+
+注意:
+- 端の値は cutoff のモンテカルロ揺らぎを持つ。小さい `n_pseudo_edge` では seed を変えるだけで
+  2σ 幅が数 % ブレる（90% は中心寄りで安定、**2σ は極端な分位点なので特にブレやすい**）。
+- シナリオ間の差が `rel_tol`（端の分解能）より小さい場合、その大小に物理的意味はない。
+  差を主張するなら、**seed アンサンブルで端 ± 誤差を出し、差が誤差を超えることを示す**。
+- 上端が弱くしか制約されない（プロファイルが浅い）場合は、精度を上げるより**片側極限として報告**する方が筋が良い。
 
 ## 背景シナリオ
 
