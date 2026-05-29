@@ -511,6 +511,7 @@ class NeutrinoAnalysis:
         self._dmb_default, self._inv_d_default = self._make_dmb_inv(self.data_vector)
         self._hess_default = self._build_hessian_from(self._dmb_default,
                                                      self._inv_d_default)
+        self._baseline_result = None   # invalidate cached free best fit
 
         if hasattr(self, '_backend') and self._backend.name == 'osqp':
             self._backend.reset_cache()
@@ -620,7 +621,14 @@ class NeutrinoAnalysis:
 
     def run_full_monte_carlo_analysis(self, num_pseudo_data, fixed_index, fixed_value,
                                       seed=None, n_jobs=1, verbose=True):
-        result = self.optimize(self.data_vector, display=False)
+        # Free best fit to the *real* data. It is identical every call, so
+        # compute it once and cache it: this both avoids redundant work and
+        # keeps it from being overwritten by the pseudo-data fits below (each
+        # _fit_one_pseudo calls optimize(), which sets self.result). The cache
+        # is cleared in set_background when the data changes.
+        if getattr(self, '_baseline_result', None) is None:
+            self._baseline_result = self.optimize(self.data_vector, display=False)
+        result = self._baseline_result
         result_fixed = self.optimize_with_fixed_parameter(
             self.data_vector, fixed_index, fixed_value, x0=result.x.copy()
         )
@@ -665,6 +673,11 @@ class NeutrinoAnalysis:
                           f"χ²_free={r.get('chi2_free')}  "
                           f"χ²_fix={r.get('chi2_fixed')}  Δχ²={r.get('delta_chi2')}")
                 self.fit_results.append(r)
+
+        # Restore self.result to the real best fit: the loop above overwrote it
+        # with the last pseudo-data fit, which would otherwise corrupt the
+        # flux scatter in plot_flux_comparison / plot_flux_with_bands.
+        self.result = result
 
     def analyze_monte_carlo_results(self, fixed_value, confidence_level=0.90):
         self.delta_chi2_values = [r['delta_chi2'] for r in self.fit_results
@@ -993,6 +1006,80 @@ class NeutrinoAnalysis:
             if fname is None:
                 fname = (f'scenario_bkg_{self.background_scenario}/'
                          f'flux_with_bands_bkg_{self.background_scenario}.pdf')
+            plt.savefig(fname); print(f"Plot saved as {fname}")
+
+    def plot_band_comparison(self, groups, level=0.954, show_theory=True,
+                             save=True, fname=None, ylim=None, logy=False):
+        """
+        Overlay one confidence level's band from several scenarios on one axis.
+
+        ``groups`` is a dict ``{label: band_files}`` where ``band_files`` is a
+        glob pattern or a list of JSON paths written by ``save_band`` (e.g.
+        ``{'flat': 'scenario_bkg_flat/bands/band_*.json',
+           'b':    'scenario_bkg_b/bands/band_*.json'}``).
+
+        Each scenario is drawn in its own colour as asymmetric error bars
+        (centre = best fit, whiskers = the ``level`` band) at the energy bin,
+        with a small horizontal offset per group so they don't overlap. Bands
+        are in physical units (cm⁻² s⁻¹), comparable across scenarios.
+        """
+        eb = np.linspace(0.41, 2, self.n)
+        cyc = ['C0', 'C1', 'C2', 'C3', 'C4']
+        n_groups = len(groups)
+        # multiplicative x-offsets (log axis) so groups sit side by side
+        jit = (np.linspace(-0.012, 0.012, n_groups)
+               if n_groups > 1 else np.array([0.0]))
+
+        def match_level(b):
+            for lv in b['band_physical']:
+                if abs(lv - level) < 1e-6:
+                    return lv
+            return None
+
+        plt.figure(figsize=(9, 6))
+        for k, (label, files) in enumerate(groups.items()):
+            if isinstance(files, str):
+                files = sorted(glob.glob(files))
+            bands = [load_band(p) for p in files]
+            if not bands:
+                print(f"[warn] no band files for group '{label}'")
+                continue
+            color = cyc[k % len(cyc)]
+            labeled = False
+            for b in bands:
+                lv = match_level(b)
+                if lv is None:
+                    continue
+                xpos = eb[b['index']] * (1 + jit[k])
+                c = b['best_fit_physical']
+                lo, hi = b['band_physical'][lv]
+                lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
+                hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
+                plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
+                             fmt='o', ms=2.5, color=color, ecolor=color,
+                             elinewidth=1.3, capsize=2, alpha=0.75,
+                             zorder=4, label=(label if not labeled else None))
+                labeled = True
+
+        if show_theory:
+            x, Phi, x2, Phidashed = self._calculate_integrated_flux()
+            plt.plot(x,  Phi,       color='red',   lw=1, alpha=0.5,
+                     label='With neutron capture')
+            plt.plot(x2, Phidashed, color='brown', lw=1, alpha=0.5, ls='dashed',
+                     label='Without neutron capture')
+
+        plt.xscale('log')
+        if logy:
+            plt.yscale('log')
+        plt.xlim(0.1, 2)
+        if ylim is not None:
+            plt.ylim(*ylim)
+        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(r"$\Phi$ [cm$^{-2}$sec$^{-1}$]")
+        plt.title(f'{level:.3f} confidence-band comparison')
+        plt.legend(fontsize=8); plt.grid(True, which="both", ls="--")
+        if save:
+            if fname is None:
+                fname = f'band_comparison_level{level:.3f}.pdf'
             plt.savefig(fname); print(f"Plot saved as {fname}")
 
     def plot_scan_results(self, index, fixed_values, chi_sq_results, save=True):
