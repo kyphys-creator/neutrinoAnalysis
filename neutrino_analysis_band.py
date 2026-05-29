@@ -1009,7 +1009,8 @@ class NeutrinoAnalysis:
             plt.savefig(fname); print(f"Plot saved as {fname}")
 
     def plot_band_comparison(self, groups, level=0.954, show_theory=True,
-                             save=True, fname=None, ylim=None, logy=False):
+                             optimized=None, save=True, fname=None,
+                             ylim=None, logy=False):
         """
         Overlay one confidence level's band from several scenarios on one axis.
 
@@ -1019,16 +1020,19 @@ class NeutrinoAnalysis:
            'b':    'scenario_bkg_b/bands/band_*.json'}``).
 
         Each scenario is drawn in its own colour as asymmetric error bars
-        (centre = best fit, whiskers = the ``level`` band) at the energy bin,
-        with a small horizontal offset per group so they don't overlap. Bands
-        are in physical units (cm⁻² s⁻¹), comparable across scenarios.
+        (centre = best fit, whiskers = the ``level`` band) at the energy bin.
+        Bands are in physical units (cm⁻² s⁻¹), comparable across scenarios.
+
+        ``optimized`` optionally overlays the full optimized flux for each
+        scenario as a scatter in the matching colour. It is a dict
+        ``{label: value}`` where value is either a ``NeutrinoAnalysis`` instance
+        (its ``result.x`` is used) or a raw flux array. Labels should match
+        ``groups`` so colours line up.
         """
         eb = np.linspace(0.41, 2, self.n)
         cyc = ['C0', 'C1', 'C2', 'C3', 'C4']
-        n_groups = len(groups)
-        # multiplicative x-offsets (log axis) so groups sit side by side
-        jit = (np.linspace(-0.012, 0.012, n_groups)
-               if n_groups > 1 else np.array([0.0]))
+        group_color = {label: cyc[k % len(cyc)]
+                       for k, label in enumerate(groups)}
 
         def match_level(b):
             for lv in b['band_physical']:
@@ -1044,22 +1048,37 @@ class NeutrinoAnalysis:
             if not bands:
                 print(f"[warn] no band files for group '{label}'")
                 continue
-            color = cyc[k % len(cyc)]
+            color = group_color[label]
             labeled = False
             for b in bands:
                 lv = match_level(b)
                 if lv is None:
                     continue
-                xpos = eb[b['index']] * (1 + jit[k])
+                xpos = eb[b['index']] * (1)
                 c = b['best_fit_physical']
                 lo, hi = b['band_physical'][lv]
                 lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
                 hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
                 plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
-                             fmt='o', ms=2.5, color=color, ecolor=color,
+                             fmt='.', ms=2.5, color=color, ecolor=color,
                              elinewidth=1.3, capsize=2, alpha=0.75,
                              zorder=4, label=(label if not labeled else None))
                 labeled = True
+
+        if optimized:
+            for label, val in optimized.items():
+                if hasattr(val, 'result'):          # a NeutrinoAnalysis instance
+                    xr = val.result.x
+                    unit = val.cm ** 2 * val.sec
+                    nn = val.n
+                else:                                # a raw flux array
+                    xr = np.asarray(val)
+                    unit = self.cm ** 2 * self.sec
+                    nn = len(xr)
+                eb_g = np.linspace(0.41, 2, nn)
+                plt.scatter(eb_g, np.asarray(xr) * unit, s=6, marker='x',
+                            color=group_color.get(label, 'k'), zorder=6,
+                            label=f'{label} optimized')
 
         if show_theory:
             x, Phi, x2, Phidashed = self._calculate_integrated_flux()
@@ -1071,12 +1090,12 @@ class NeutrinoAnalysis:
         plt.xscale('log')
         if logy:
             plt.yscale('log')
-        plt.xlim(0.1, 2)
+        plt.xlim(0.4, 3)
         if ylim is not None:
             plt.ylim(*ylim)
         plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(r"$\Phi$ [cm$^{-2}$sec$^{-1}$]")
         plt.title(f'{level:.3f} confidence-band comparison')
-        plt.legend(fontsize=8); plt.grid(True, which="both", ls="--")
+        plt.legend(fontsize=8); #plt.grid(True, which="both", ls="--")
         if save:
             if fname is None:
                 fname = f'band_comparison_level{level:.3f}.pdf'
