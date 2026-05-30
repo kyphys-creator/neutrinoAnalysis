@@ -629,6 +629,17 @@ class NeutrinoAnalysis:
         if getattr(self, '_baseline_result', None) is None:
             self._baseline_result = self.optimize(self.data_vector, display=False)
         result = self._baseline_result
+
+        # The Monte Carlo only needs χ² (for Δχ²) and modPrime = M·x / c. Both
+        # are invariant under the OSQP vertex selection: every optimal x gives
+        # the same M·x = μ and the same χ². Skip the HiGHS LP for every pseudo
+        # fit — this is a >4× speed-up at large num_pseudo_data because each
+        # fit then avoids 1 LP solve.
+        _has_vs = hasattr(getattr(self, '_backend', None), 'vertex_select')
+        _saved_vs = self._backend.vertex_select if _has_vs else None
+        if _has_vs:
+            self._backend.vertex_select = False
+
         result_fixed = self.optimize_with_fixed_parameter(
             self.data_vector, fixed_index, fixed_value, x0=result.x.copy()
         )
@@ -678,6 +689,8 @@ class NeutrinoAnalysis:
         # with the last pseudo-data fit, which would otherwise corrupt the
         # flux scatter in plot_flux_comparison / plot_flux_with_bands.
         self.result = result
+        if _has_vs:
+            self._backend.vertex_select = _saved_vs
 
     def analyze_monte_carlo_results(self, fixed_value, confidence_level=0.90):
         self.delta_chi2_values = [r['delta_chi2'] for r in self.fit_results
