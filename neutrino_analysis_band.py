@@ -385,9 +385,9 @@ class NeutrinoAnalysis:
 
     # ----------------------------------------------------------------
     def __init__(self, background_scenario='c', intervals='180',
-                 GeV=1e-6, c=1, solver='scipy'):
+                 GeV=1e-6, c=1, solver='scipy', T=3):
         self.iterationTime = 1000
-        self.T = 3
+        self.T = T
         self.GeV = GeV
         self.c = c
 
@@ -462,6 +462,25 @@ class NeutrinoAnalysis:
             "b_i (a)": ba, "b_i (b)": bb, "b_i (c)": bc,
             "b_i (flat)": bflat, "b_i (b2)": b2,
         })
+
+    # ---------- output paths (T-segregated) ----------
+    @property
+    def _T_label(self):
+        """``T3`` for integer T, ``T2.5`` otherwise. Used as a top-level prefix
+        so different observation-time scenarios don't overwrite each other."""
+        t = self.T
+        return f'T{int(t)}' if float(t).is_integer() else f'T{t}'
+
+    @property
+    def scenario_dir(self):
+        """Output directory for this T × background scenario."""
+        return os.path.join(self._T_label,
+                            f'scenario_bkg_{self.background_scenario}')
+
+    @property
+    def bands_dir(self):
+        """Default location for confidence-band JSON files."""
+        return os.path.join(self.scenario_dir, 'bands')
 
     # ---------- backend ----------
     def set_solver(self, solver):
@@ -923,8 +942,8 @@ class NeutrinoAnalysis:
         plt.title('Optimized Neutrino Flux vs. Theoretical Models')
         plt.legend(); plt.grid(True, which="both", ls="--")
         if save:
-            os.makedirs(f'scenario_bkg_{self.background_scenario}', exist_ok=True)
-            fn = f'scenario_bkg_{self.background_scenario}/flux_comparison_bkg_{self.background_scenario}.pdf'
+            os.makedirs(self.scenario_dir, exist_ok=True)
+            fn = f'{self.scenario_dir}/flux_comparison_bkg_{self.background_scenario}.pdf'
             plt.savefig(fn); print(f"Plot saved as {fn}")
 
     # ---------- confidence band: save / batch / overlay ----------
@@ -951,8 +970,14 @@ class NeutrinoAnalysis:
         print(f"Band saved as {path}")
         return path
 
-    def find_and_save_band(self, fixed_index, outdir='bands', **kwargs):
-        """Run ``find_confidence_band`` for one index and save it immediately."""
+    def find_and_save_band(self, fixed_index, outdir=None, **kwargs):
+        """Run ``find_confidence_band`` for one index and save it immediately.
+
+        ``outdir`` defaults to ``self.bands_dir`` (= ``T<T>/scenario_bkg_<x>/bands``)
+        so different T runs don't overwrite each other.
+        """
+        if outdir is None:
+            outdir = self.bands_dir
         band = self.find_confidence_band(fixed_index, **kwargs)
         self.save_band(band, outdir=outdir)
         return band
@@ -1015,9 +1040,9 @@ class NeutrinoAnalysis:
         plt.title('Optimized Neutrino Flux with Confidence Bands')
         plt.legend(fontsize=8); plt.grid(True, which="both", ls="--")
         if save:
-            os.makedirs(f'scenario_bkg_{self.background_scenario}', exist_ok=True)
+            os.makedirs(self.scenario_dir, exist_ok=True)
             if fname is None:
-                fname = (f'scenario_bkg_{self.background_scenario}/'
+                fname = (f'{self.scenario_dir}/'
                          f'flux_with_bands_bkg_{self.background_scenario}.pdf')
             plt.savefig(fname); print(f"Plot saved as {fname}")
 
@@ -1143,8 +1168,8 @@ class NeutrinoAnalysis:
         plt.xlim(fv[0], fv[np.array(chi_sq_results) <= 1e2][-1])
         plt.ylim(1e-5, 1e2); plt.legend(loc='lower right', ncol=1, fontsize=9); plt.yscale('log')
         if save:
-            os.makedirs(f'scenario_bkg_{self.background_scenario}', exist_ok=True)
-            fn = f'scenario_bkg_{self.background_scenario}/scan_param_{index}_bkg_{self.background_scenario}.pdf'
+            os.makedirs(self.scenario_dir, exist_ok=True)
+            fn = f'{self.scenario_dir}/scan_param_{index}_bkg_{self.background_scenario}.pdf'
             plt.savefig(fn); print(f"Scan plot saved as {fn}")
 
 
