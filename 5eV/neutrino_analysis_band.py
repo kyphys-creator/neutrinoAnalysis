@@ -239,20 +239,29 @@ class _OSQPBackend:
         floor (which a plain Σx would, since zeroing the tail costs total flux).
         The leading weight is 1 (not 0), so the head is not artificially inflated
         the way a weight like Σ i·xᵢ would do. The result is insensitive to R.
+
+        The LP solves for the column-scaled variable z = x / D, exactly as the
+        QP does, so the equality constraint becomes ``MsD @ z == mu`` with a
+        unit-column matrix. Without this rescaling the raw constraint M_s·x = μ
+        has entries ~1e-7 against variables ~1e8, so HiGHS's absolute feasibility
+        tolerance (1e-7) lets x violate the fit by enough that χ²(x_v) is many
+        orders of magnitude larger than the QP's value.
         """
         p = self.p
         n, m = p.n, p.m
-        M_s = p.M_matrix / p.c
+        D = self._column_scale()
+        MsD = (p.M_matrix / p.c) * D[None, :]   # unit-column constant matrix
         tail_w = 1000.0 ** (np.arange(n) / max(n - 1, 1))
-        x = cp.Variable(n, nonneg=True)
+        z = cp.Variable(n, nonneg=True)         # x = D ⊙ z
         mu_par = cp.Parameter(m)
-        cons = [M_s @ x == mu_par, x[:-1] >= x[1:]]
+        cons = [MsD @ z == mu_par,
+                cp.multiply(D[:-1], z[:-1]) >= cp.multiply(D[1:], z[1:])]
         fv_par = None
         if fixed_index is not None:
             fv_par = cp.Parameter()
-            cons.append(x[fixed_index] == fv_par)
-        prob = cp.Problem(cp.Minimize(tail_w @ x), cons)
-        return prob, x, mu_par, fv_par
+            cons.append(D[fixed_index] * z[fixed_index] == fv_par)
+        prob = cp.Problem(cp.Minimize((tail_w * D) @ z), cons)
+        return prob, z, mu_par, fv_par, D
 
     def _get_lp(self, fixed_index):
         if fixed_index not in self._lp_cache:
@@ -263,7 +272,7 @@ class _OSQPBackend:
         """Return a piecewise-constant vertex with the same fit as ``x_interior``."""
         M_s = self.p.M_matrix / self.p.c
         mu = M_s @ x_interior
-        prob, x, mu_par, fv_par = self._get_lp(fixed_index)
+        prob, z, mu_par, fv_par, D = self._get_lp(fixed_index)
         mu_par.value = mu
         if fixed_index is not None:
             fv_par.value = float(fixed_value)
@@ -271,7 +280,9 @@ class _OSQPBackend:
             prob.solve(solver=cp.HIGHS)
         except Exception:
             return None
-        return x.value if prob.status in ('optimal', 'optimal_inaccurate') else None
+        if prob.status not in ('optimal', 'optimal_inaccurate') or z.value is None:
+            return None
+        return D * z.value
 
     def _set_data_params(self, data, w_par, z_par):
         """Fill in the cvxpy Parameters from a (scaled) data vector."""
