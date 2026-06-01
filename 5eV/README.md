@@ -9,29 +9,18 @@
 ## ディレクトリ構成
 
 ```
-README.md
-1eV/                              # 検出器しきい値 1 eV の作業ディレクトリ
-  neutrino_analysis_band.py       # 本体（しきい値別に独立コピー、差分あり）
-  CRmat/originalUnit/             # 応答行列 CRmat<intervals>_originalUnit.csv
-  Ratebin/                        # Ratebin2 / Ratebin7
-  Danny’s files/                  # 理論フラックス曲線
-  confidence_band_<scen>_T<T>.ipynb
-  comparison*.ipynb
-  T3/  T20/  T300/                # T 別の出力ルート (実行時に自動生成)
-    scenario_bkg_<scen>/
-      flux_*.pdf
-      bands/band_bkg<scen>_idx<NNN>.json
-
-5eV/                              # しきい値 5 eV、同じ構成
-  neutrino_analysis_fast.py       # 5eV 側のみ fast 版も同居
-  neutrino_analysis_band.py
-  ...（1eV と同じレイアウト）
+neutrino_analysis_fast.py   # 本体。scipy / osqp の 2 バックエンド
+neutrino_analysis_band.py   # fast + 信頼バンドの根探索・保存・比較プロット
+montecarlo.ipynb            # 最適化・スキャンの使用例
+confidence_band.ipynb       # 信頼バンド探索・保存・オーバーレイの使用例
+confidence_band_flat/_Bkg/_noBkg.ipynb  # シナリオ別のバンド計算
+comparison.ipynb            # 複数シナリオのバンド比較
+CRmat/originalUnit/         # 応答行列 CRmat<intervals>_originalUnit.csv
+Ratebin/                    # Ratebin2 / Ratebin7 (観測レート)
+Danny’s files/              # 理論フラックス曲線 (fig1-solid / fig1-dashed ほか)
+scenario_bkg_<x>/           # プロットの保存先 (実行時に自動生成)
+scenario_bkg_<x>/bands/     # 信頼バンド JSON の保存先 (実行時に自動生成)
 ```
-
-**重要:** notebook の実行は **`1eV/` または `5eV/` をカレントディレクトリに**して行う。
-コードはそこから `CRmat/originalUnit/` などを相対パスで読み込む。
-出力は `T<T>/scenario_bkg_<scen>/` 配下に自動で振り分けられるため、しきい値・T・背景シナリオ
-の組み合わせが互いに上書きすることはない。
 
 実行時のカレントディレクトリにこれらのデータフォルダが必要。
 
@@ -48,20 +37,16 @@ Python 3.12 で動作確認。
 
 ## 基本的な使い方
 
-cwd を `1eV/` または `5eV/` にして実行する（データの相対パスがそこに紐づく）。
-
 ```python
-# 5eV では fast / band どちらも import 可能。1eV では band のみ。
-from neutrino_analysis_band import NeutrinoAnalysis
+from neutrino_analysis_fast import NeutrinoAnalysis
 
-# T を引数で渡す（既定 T=3）。出力先は自動で T<T>/scenario_bkg_<scen>/...
+# scipy バックエンド (安定・既定)
 a = NeutrinoAnalysis(background_scenario='flat', intervals='180',
-                     GeV=0.32e16, solver='scipy', T=3)
+                     GeV=0.32e16, solver='scipy')
 
 res = a.optimize(a.data_vector)      # χ² 最小化
 print(res.fun / a.c)                 # χ²/c
 a.plot_flux_comparison(save=True)    # 最適フラックス vs 理論曲線
-print(a.scenario_dir, a.bands_dir)   # 出力先の確認
 ```
 
 ### ソルバーの切り替え
