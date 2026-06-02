@@ -1035,7 +1035,8 @@ class NeutrinoAnalysis:
         ``style='fill'`` (default) connects the lower and upper edges of each
         level across energy bins with lines and shades the interval in a
         translucent colour (one colour per level, widest drawn underneath).
-        ``style='errorbar'`` draws an asymmetric error bar per bin instead.
+        ``style='errorbar'`` draws an asymmetric error bar per bin instead, and
+        ``style='both'`` overlays the error bars on the shaded band.
         """
         if self.result is None:
             raise RuntimeError("Run optimize() before plotting.")
@@ -1061,7 +1062,7 @@ class NeutrinoAnalysis:
         level_colors = {lv: cyc[k % len(cyc)]
                         for k, lv in enumerate(sorted(all_levels, reverse=True))}
 
-        if style == 'fill':
+        if style in ('fill', 'both'):
             # widest level first so narrower levels are drawn on top
             for lv in sorted(all_levels, reverse=True):
                 pts = sorted((eb[b['index']],) + tuple(b['band_physical'][lv])
@@ -1077,7 +1078,7 @@ class NeutrinoAnalysis:
                                  zorder=2, label=f'{lv:.3f} band')
                 plt.plot(xs[ok], lo[ok], color=col, lw=1.0, zorder=3)
                 plt.plot(xs[ok], hi[ok], color=col, lw=1.0, zorder=3)
-        else:
+        if style in ('errorbar', 'both'):
             labeled = set()
             for b in bands:
                 xpos = eb[b['index']]
@@ -1089,7 +1090,7 @@ class NeutrinoAnalysis:
                     lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
                     hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
                     lab = None
-                    if lv not in labeled:
+                    if style != 'both' and lv not in labeled:
                         lab = f'{lv:.3f} band'
                         labeled.add(lv)
                     plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
@@ -1180,7 +1181,7 @@ class NeutrinoAnalysis:
                 lo_err = np.where(np.isfinite(lo), np.maximum(cen - lo, 0.0), 0.0)
                 hi_err = np.where(np.isfinite(hi), np.maximum(hi - cen, 0.0), 0.0)
                 plt.errorbar(xs, cen, yerr=[lo_err, hi_err],
-                             fmt='.', ms=2.5, color=color, ecolor=color,
+                             fmt='none', ms=2.5, color=color, ecolor=color,
                              elinewidth=1.3, capsize=2, alpha=0.75,
                              zorder=4, label=lbl)
 
