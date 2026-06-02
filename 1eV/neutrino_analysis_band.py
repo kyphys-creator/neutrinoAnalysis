@@ -1123,9 +1123,9 @@ class NeutrinoAnalysis:
 
         Each scenario is drawn in its own colour. ``style`` selects how the
         ``level`` band is shown:
-        ``'fill'`` (default) shades the band between its lower and upper edges
-        (with a dotted best-fit line), ``'errorbar'`` draws an asymmetric error
-        bar per bin, and ``'both'`` overlays the error bars on the shaded band.
+        ``'fill'`` (default) shades the band between its lower and upper edges,
+        ``'errorbar'`` draws an asymmetric error bar per bin, and ``'both'``
+        overlays the error bars on the shaded band.
         Bands are in physical units (cm⁻² s⁻¹), comparable across scenarios.
 
         ``optimized`` optionally overlays the full optimized flux for each
@@ -1175,7 +1175,6 @@ class NeutrinoAnalysis:
                                  zorder=2, label=lbl)
                 plt.plot(xs[ok], lo[ok], color=color, lw=1.0, zorder=3)
                 plt.plot(xs[ok], hi[ok], color=color, lw=1.0, zorder=3)
-                plt.plot(xs, cen, color=color, lw=1.0, ls=':', zorder=3)
                 lbl = None
             if style in ('errorbar', 'both'):
                 lo_err = np.where(np.isfinite(lo), np.maximum(cen - lo, 0.0), 0.0)
