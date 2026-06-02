@@ -1025,13 +1025,17 @@ class NeutrinoAnalysis:
         return band
 
     def plot_flux_with_bands(self, band_files, levels=None, save=True,
-                             fname=None, ylim=None):
+                             fname=None, ylim=None, style='fill'):
         """
         Overlay saved confidence bands on the optimized flux. ``band_files`` is a
         list of JSON paths or a glob pattern (e.g. ``'bands/band_*idx*.json'``).
-        Each band is drawn as an asymmetric error bar at its energy bin, one
-        colour per level. ``self.optimize`` must have been run first so the
-        scatter and band centres line up.
+        ``self.optimize`` must have been run first so the scatter and band
+        centres line up.
+
+        ``style='fill'`` (default) connects the lower and upper edges of each
+        level across energy bins with lines and shades the interval in a
+        translucent colour (one colour per level, widest drawn underneath).
+        ``style='errorbar'`` draws an asymmetric error bar per bin instead.
         """
         if self.result is None:
             raise RuntimeError("Run optimize() before plotting.")
@@ -1057,23 +1061,40 @@ class NeutrinoAnalysis:
         level_colors = {lv: cyc[k % len(cyc)]
                         for k, lv in enumerate(sorted(all_levels, reverse=True))}
 
-        labeled = set()
-        for b in bands:
-            xpos = eb[b['index']]
-            c = b['best_fit_physical']
-            for lv in sorted(b['levels'], reverse=True):
-                if levels is not None and lv not in levels:
+        if style == 'fill':
+            # widest level first so narrower levels are drawn on top
+            for lv in sorted(all_levels, reverse=True):
+                pts = sorted((eb[b['index']],) + tuple(b['band_physical'][lv])
+                             for b in bands if lv in b['band_physical'])
+                if not pts:
                     continue
-                lo, hi = b['band_physical'][lv]
-                lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
-                hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
-                lab = None
-                if lv not in labeled:
-                    lab = f'{lv:.3f} band'
-                    labeled.add(lv)
-                plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
-                             fmt='none', ecolor=level_colors[lv], elinewidth=1.5,
-                             capsize=2, alpha=0.7, zorder=4, label=lab)
+                xs = np.array([p[0] for p in pts])
+                lo = np.array([p[1] for p in pts])
+                hi = np.array([p[2] for p in pts])
+                ok = np.isfinite(lo) & np.isfinite(hi)
+                col = level_colors[lv]
+                plt.fill_between(xs[ok], lo[ok], hi[ok], color=col, alpha=0.25,
+                                 zorder=2, label=f'{lv:.3f} band')
+                plt.plot(xs[ok], lo[ok], color=col, lw=1.0, zorder=3)
+                plt.plot(xs[ok], hi[ok], color=col, lw=1.0, zorder=3)
+        else:
+            labeled = set()
+            for b in bands:
+                xpos = eb[b['index']]
+                c = b['best_fit_physical']
+                for lv in sorted(b['levels'], reverse=True):
+                    if levels is not None and lv not in levels:
+                        continue
+                    lo, hi = b['band_physical'][lv]
+                    lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
+                    hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
+                    lab = None
+                    if lv not in labeled:
+                        lab = f'{lv:.3f} band'
+                        labeled.add(lv)
+                    plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
+                                 fmt='none', ecolor=level_colors[lv], elinewidth=1.5,
+                                 capsize=2, alpha=0.7, zorder=4, label=lab)
 
         plt.xscale('log'); plt.xlim(0.1, 2)
         if ylim is not None:
