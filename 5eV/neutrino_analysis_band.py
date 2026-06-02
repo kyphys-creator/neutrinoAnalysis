@@ -46,6 +46,18 @@ except ImportError:
     _HAS_CVXPY = False
 
 
+# Apply the Physical Review style sheet if it sits next to this module, so all
+# plots pick up the journal fonts/ticks/colours automatically. (figsize stays
+# whatever each plotting call sets.)
+_PHYSREV_STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              'physrev.mplstyle')
+if os.path.exists(_PHYSREV_STYLE):
+    try:
+        plt.style.use(_PHYSREV_STYLE)
+    except Exception:
+        pass
+
+
 # -------------------------------------------------------------------
 # Numba kernels (used by the scipy backend)
 # -------------------------------------------------------------------
