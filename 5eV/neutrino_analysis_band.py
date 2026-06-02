@@ -143,6 +143,9 @@ class _OSQPBackend:
     """
     name = 'osqp'
 
+    _VERTEX_SOLVERS = None   # cached list of installed simplex LP solvers
+    _VERTEX_WARNED = False   # warn at most once if none are available
+
     # eps 1e-8 is plenty here (χ² agrees with 1e-10 to ~1e-17) and converges in
     # ~25 ADMM iterations instead of ~90 000, so the free solve is ~1000× faster.
     DEFAULT_OPTS = dict(
@@ -268,6 +271,23 @@ class _OSQPBackend:
             self._lp_cache[fixed_index] = self._build_lp(fixed_index)
         return self._lp_cache[fixed_index]
 
+    def _vertex_solvers(self):
+        """Simplex/active-set LP solvers that return a *vertex* (so the flux is
+        piecewise-constant), in preference order, filtered to what's installed.
+
+        HiGHS is fastest but is an optional cvxpy extra (``pip install highspy``).
+        SciPy's linprog (HiGHS method) ships with cvxpy itself, so it is the
+        reliable fallback: without it, a collaborator missing HiGHS silently got
+        the smooth interior solution instead of the staircase. Interior-point
+        solvers (CLARABEL/SCS/OSQP) are deliberately excluded — they return a
+        face interior, not a vertex."""
+        if _OSQPBackend._VERTEX_SOLVERS is None:
+            avail = set(cp.installed_solvers())
+            _OSQPBackend._VERTEX_SOLVERS = [
+                s for s in ('HIGHS', 'GLPK', 'SCIPY') if s in avail
+            ]
+        return _OSQPBackend._VERTEX_SOLVERS
+
     def _select_vertex(self, x_interior, fixed_index, fixed_value):
         """Return a piecewise-constant vertex with the same fit as ``x_interior``."""
         M_s = self.p.M_matrix / self.p.c
@@ -276,13 +296,24 @@ class _OSQPBackend:
         mu_par.value = mu
         if fixed_index is not None:
             fv_par.value = float(fixed_value)
-        try:
-            prob.solve(solver=cp.HIGHS)
-        except Exception:
-            return None
-        if prob.status not in ('optimal', 'optimal_inaccurate') or z.value is None:
-            return None
-        return D * z.value
+        for solver in self._vertex_solvers():
+            try:
+                prob.solve(solver=getattr(cp, solver))
+            except Exception:
+                continue
+            if prob.status in ('optimal', 'optimal_inaccurate') and z.value is not None:
+                return D * z.value
+        if not _OSQPBackend._VERTEX_WARNED:
+            import warnings
+            warnings.warn(
+                "vertex_select is on but no simplex LP solver succeeded, so the "
+                "flux is the smooth interior solution, not the piecewise-constant "
+                "staircase. Install a vertex solver, e.g. `pip install highspy`. "
+                f"(installed solvers: {cp.installed_solvers()})",
+                RuntimeWarning,
+            )
+            _OSQPBackend._VERTEX_WARNED = True
+        return None
 
     def _set_data_params(self, data, w_par, z_par):
         """Fill in the cvxpy Parameters from a (scaled) data vector."""
