@@ -1111,7 +1111,7 @@ class NeutrinoAnalysis:
 
     def plot_band_comparison(self, groups, level=0.954, show_theory=True,
                              optimized=None, save=True, fname=None,
-                             ylim=None, logy=False):
+                             ylim=None, logy=False, style='fill'):
         """
         Overlay one confidence level's band from several scenarios on one axis.
 
@@ -1120,8 +1120,11 @@ class NeutrinoAnalysis:
         ``{'flat': 'scenario_bkg_flat/bands/band_*.json',
            'b':    'scenario_bkg_b/bands/band_*.json'}``).
 
-        Each scenario is drawn in its own colour as asymmetric error bars
-        (centre = best fit, whiskers = the ``level`` band) at the energy bin.
+        Each scenario is drawn in its own colour. ``style`` selects how the
+        ``level`` band is shown:
+        ``'fill'`` (default) shades the band between its lower and upper edges
+        (with a dotted best-fit line), ``'errorbar'`` draws an asymmetric error
+        bar per bin, and ``'both'`` overlays the error bars on the shaded band.
         Bands are in physical units (cm⁻² s⁻¹), comparable across scenarios.
 
         ``optimized`` optionally overlays the full optimized flux for each
@@ -1150,21 +1153,36 @@ class NeutrinoAnalysis:
                 print(f"[warn] no band files for group '{label}'")
                 continue
             color = group_color[label]
-            labeled = False
+            rows = []
             for b in bands:
                 lv = match_level(b)
                 if lv is None:
                     continue
-                xpos = eb[b['index']] * (1)
-                c = b['best_fit_physical']
                 lo, hi = b['band_physical'][lv]
-                lo_err = max(c - lo, 0.0) if np.isfinite(lo) else 0.0
-                hi_err = max(hi - c, 0.0) if np.isfinite(hi) else 0.0
-                plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
-                             fmt='none', ms=2.5, color=color, ecolor=color,
+                rows.append((eb[b['index']], b['best_fit_physical'], lo, hi))
+            if not rows:
+                continue
+            rows.sort()
+            xs = np.array([r[0] for r in rows])
+            cen = np.array([r[1] for r in rows])
+            lo = np.array([r[2] for r in rows])
+            hi = np.array([r[3] for r in rows])
+            ok = np.isfinite(lo) & np.isfinite(hi)
+            lbl = label
+            if style in ('fill', 'both'):
+                plt.fill_between(xs[ok], lo[ok], hi[ok], color=color, alpha=0.22,
+                                 zorder=2, label=lbl)
+                plt.plot(xs[ok], lo[ok], color=color, lw=1.0, zorder=3)
+                plt.plot(xs[ok], hi[ok], color=color, lw=1.0, zorder=3)
+                plt.plot(xs, cen, color=color, lw=1.0, ls=':', zorder=3)
+                lbl = None
+            if style in ('errorbar', 'both'):
+                lo_err = np.where(np.isfinite(lo), np.maximum(cen - lo, 0.0), 0.0)
+                hi_err = np.where(np.isfinite(hi), np.maximum(hi - cen, 0.0), 0.0)
+                plt.errorbar(xs, cen, yerr=[lo_err, hi_err],
+                             fmt='.', ms=2.5, color=color, ecolor=color,
                              elinewidth=1.3, capsize=2, alpha=0.75,
-                             zorder=4, label=(label if not labeled else None))
-                labeled = True
+                             zorder=4, label=lbl)
 
         if optimized:
             for label, val in optimized.items():
