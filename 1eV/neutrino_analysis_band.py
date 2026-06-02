@@ -968,19 +968,19 @@ class NeutrinoAnalysis:
             Phidashed[i] = integrate.trapezoid(y2[i:], x2[i:])
         return x, Phi - Phi2to7, x2, Phidashed - Phi2to7dashed
 
-    def plot_flux_comparison(self, save=True):
+    def plot_flux_comparison(self, save=True, norm=1e12):
         if self.result is None:
             raise RuntimeError("Run optimize() before plotting.")
         x, Phi, x2, Phidashed = self._calculate_integrated_flux()
         plt.figure(figsize=(8, 6))
-        plt.plot(x,  Phi,       label=r'With neutron capture',    color='red')
-        plt.plot(x2, Phidashed, label=r'Without neutron capture', color='brown', ls='dashed')
+        plt.plot(x,  Phi / norm,       label=r'With neutron capture',    color='red')
+        plt.plot(x2, Phidashed / norm, label=r'Without neutron capture', color='brown', ls='dashed')
         eb = np.linspace(0.18, 2, self.n)
-        plt.scatter(eb, self.result.x * (self.cm ** 2 * self.sec),
+        plt.scatter(eb, self.result.x * (self.cm ** 2 * self.sec) / norm,
                     label=f'Optimized Flux (Bkg: {self.background_scenario})',
                     zorder=5, s=1)
-        plt.xscale('log'); plt.ylim(0, 2e12); plt.xlim(0.1, 2)
-        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(r"$\Phi$ [cm$^{-2}$sec$^{-1}$]")
+        plt.xscale('log'); plt.ylim(0, 2e12 / norm); plt.xlim(0.1, 2)
+        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(_phi_ylabel(norm))
         plt.title('Optimized Neutrino Flux vs. Theoretical Models')
         plt.legend(); plt.grid(True, which="both", ls="--")
         if save:
@@ -1025,7 +1025,7 @@ class NeutrinoAnalysis:
         return band
 
     def plot_flux_with_bands(self, band_files, levels=None, save=True,
-                             fname=None, ylim=None, style='fill'):
+                             fname=None, ylim=None, style='fill', norm=1e12):
         """
         Overlay saved confidence bands on the optimized flux. ``band_files`` is a
         list of JSON paths or a glob pattern (e.g. ``'bands/band_*idx*.json'``).
@@ -1051,9 +1051,9 @@ class NeutrinoAnalysis:
         x, Phi, x2, Phidashed = self._calculate_integrated_flux()
 
         plt.figure(figsize=(8, 6))
-        plt.plot(x,  Phi,       color='red',   label='With neutron capture')
-        plt.plot(x2, Phidashed, color='brown', ls='dashed', label='Without neutron capture')
-        plt.scatter(eb, self.result.x * unit, s=3, color='black', zorder=5,
+        plt.plot(x,  Phi / norm,       color='red',   label='With neutron capture')
+        plt.plot(x2, Phidashed / norm, color='brown', ls='dashed', label='Without neutron capture')
+        plt.scatter(eb, self.result.x * unit / norm, s=3, color='black', zorder=5,
                     label=f'Optimized Flux (Bkg: {self.background_scenario})')
 
         all_levels = levels if levels is not None else sorted(
@@ -1070,8 +1070,8 @@ class NeutrinoAnalysis:
                 if not pts:
                     continue
                 xs = np.array([p[0] for p in pts])
-                lo = np.array([p[1] for p in pts])
-                hi = np.array([p[2] for p in pts])
+                lo = np.array([p[1] for p in pts]) / norm
+                hi = np.array([p[2] for p in pts]) / norm
                 ok = np.isfinite(lo) & np.isfinite(hi)
                 col = level_colors[lv]
                 plt.fill_between(xs[ok], lo[ok], hi[ok], color=col, alpha=0.25,
@@ -1093,14 +1093,14 @@ class NeutrinoAnalysis:
                     if style != 'both' and lv not in labeled:
                         lab = f'{lv:.3f} band'
                         labeled.add(lv)
-                    plt.errorbar([xpos], [c], yerr=[[lo_err], [hi_err]],
+                    plt.errorbar([xpos], [c / norm], yerr=[[lo_err / norm], [hi_err / norm]],
                                  fmt='none', ecolor=level_colors[lv], elinewidth=1.5,
                                  capsize=2, alpha=0.7, zorder=4, label=lab)
 
         plt.xscale('log'); plt.xlim(0.1, 2)
         if ylim is not None:
-            plt.ylim(*ylim)
-        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(r"$\Phi$ [cm$^{-2}$sec$^{-1}$]")
+            plt.ylim(ylim[0] / norm, ylim[1] / norm)
+        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(_phi_ylabel(norm))
         plt.title('Optimized Neutrino Flux with Confidence Bands')
         plt.legend(fontsize=8); plt.grid(True, which="both", ls="--")
         if save:
@@ -1112,7 +1112,7 @@ class NeutrinoAnalysis:
 
     def plot_band_comparison(self, groups, level=0.954, show_theory=True,
                              optimized=None, save=True, fname=None,
-                             ylim=None, logy=False, style='fill'):
+                             ylim=None, logy=False, style='fill', norm=1e12):
         """
         Overlay one confidence level's band from several scenarios on one axis.
 
@@ -1165,9 +1165,9 @@ class NeutrinoAnalysis:
                 continue
             rows.sort()
             xs = np.array([r[0] for r in rows])
-            cen = np.array([r[1] for r in rows])
-            lo = np.array([r[2] for r in rows])
-            hi = np.array([r[3] for r in rows])
+            cen = np.array([r[1] for r in rows]) / norm
+            lo = np.array([r[2] for r in rows]) / norm
+            hi = np.array([r[3] for r in rows]) / norm
             ok = np.isfinite(lo) & np.isfinite(hi)
             lbl = label
             if style in ('fill', 'both'):
@@ -1195,15 +1195,15 @@ class NeutrinoAnalysis:
                     unit = self.cm ** 2 * self.sec
                     nn = len(xr)
                 eb_g = np.linspace(0.18, 2, nn)
-                plt.scatter(eb_g, np.asarray(xr) * unit, s=6, marker='x',
+                plt.scatter(eb_g, np.asarray(xr) * unit / norm, s=6, marker='x',
                             color=group_color.get(label, 'k'), zorder=6,
                             label=f'{label} optimized')
 
         if show_theory:
             x, Phi, x2, Phidashed = self._calculate_integrated_flux()
-            plt.plot(x,  Phi,       color='red',   lw=1, alpha=0.5,
+            plt.plot(x,  Phi / norm,       color='red',   lw=1, alpha=0.5,
                      label='With neutron capture')
-            plt.plot(x2, Phidashed, color='brown', lw=1, alpha=0.5, ls='dashed',
+            plt.plot(x2, Phidashed / norm, color='brown', lw=1, alpha=0.5, ls='dashed',
                      label='Without neutron capture')
 
         plt.xscale('log')
@@ -1211,8 +1211,8 @@ class NeutrinoAnalysis:
             plt.yscale('log')
         plt.xlim(0.1, 3)
         if ylim is not None:
-            plt.ylim(*ylim)
-        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(r"$\Phi$ [cm$^{-2}$sec$^{-1}$]")
+            plt.ylim(ylim[0] / norm, ylim[1] / norm)
+        plt.xlabel(r"$E_\nu$ [MeV]"); plt.ylabel(_phi_ylabel(norm))
         plt.title(f'{level:.3f} confidence-band comparison')
         plt.legend(fontsize=8); #plt.grid(True, which="both", ls="--")
         if save:
@@ -1257,6 +1257,14 @@ class NeutrinoAnalysis:
 # -------------------------------------------------------------------
 # Module-level helpers
 # -------------------------------------------------------------------
+def _phi_ylabel(norm):
+    """y-axis label for flux divided by ``norm`` (e.g. 1e12 -> '$10^{12}$')."""
+    e = int(round(np.log10(norm)))
+    if e == 0:
+        return r"$\Phi$ [cm$^{-2}$sec$^{-1}$]"
+    return rf"$\Phi$ [$10^{{{e}}}$ cm$^{{-2}}$sec$^{{-1}}$]"
+
+
 def scan_parameter(analysis, data, index, num_points=21, scan_range=0.35):
     return analysis.scan_parameter(data, index, num_points=num_points, scan_range=scan_range)
 
