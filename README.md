@@ -46,11 +46,15 @@ combinations never overwrite each other.
 ```bash
 pip install numpy scipy matplotlib pandas numba
 pip install cvxpy osqp        # required when using solver='osqp'
+pip install highspy           # optional; fastest vertex (staircase) solver
 pip install joblib            # optional; enables scipy-backend MC parallelism
 ```
 
-`cvxpy` brings CLARABEL / SCS / HiGHS, used for solver fallback and vertex
-selection. Tested on Python 3.12.
+`cvxpy` brings CLARABEL / SCS, used for solver fallback. The piecewise-constant
+(staircase) flux needs a *simplex* LP solver; the code tries HiGHS → GLPK →
+SciPy-linprog in order. SciPy ships with cvxpy, so the staircase appears even
+without `highspy` — but installing `highspy` makes vertex selection faster.
+Tested on Python 3.12.
 
 ### Basic usage
 
@@ -202,11 +206,32 @@ switches it on the fly (the OSQP cache is cleared automatically).
   return different points on that face. **The Δχ² profile (and the confidence
   interval) depends only on χ² and is unaffected**; physical conclusions are
   stable.
-- **OSQP scaling.** The natural-unit constant `c` is ~1e70, so the OSQP
-  backend column-scales internally. Without that, OSQP/CLARABEL can return a
-  wrong point still labelled `optimal`.
+- **Scaling (QP and the vertex LP).** The natural-unit constant `c` is ~1e70,
+  so both the OSQP QP and the vertex-selection LP column-scale internally
+  (`x = D·z`). Without it, OSQP/CLARABEL can return a wrong point still labelled
+  `optimal`, and the LP can satisfy `M_s·x = μ` only loosely — making the
+  returned flux's χ² much larger than the QP's reported value (most visible at
+  large `GeV`).
+- **GeV choice affects OSQP precision.** Although the physical flux is
+  GeV-invariant, OSQP's *relative* accuracy degrades as `GeV` grows. At a given
+  threshold, `GeV` ≈ 0.3–0.6e16 reaches χ²/c ~1e-13, whereas `GeV=1e16` only
+  ~1e-8 and `2e16` ~1e-7. For narrow bands (large `T`) this matters: prefer the
+  smaller `GeV` that still works.
 - **Band search assumption.** The band is taken to be connected (one crossing
   on each side).
+
+### Troubleshooting
+
+- **No staircase (smooth ramp instead).** Vertex selection needs a simplex LP
+  solver. If none is found the flux falls back to the smooth interior solution
+  and a one-time `RuntimeWarning` is emitted. `pip install highspy`, or rely on
+  the bundled SciPy solver (check `cvxpy.installed_solvers()` contains
+  `'SCIPY'`).
+- **Bands look jagged / non-monotonic, especially at large `T`.** Usually a
+  stale cache of bands computed before a scaling fix, or too-large `GeV`.
+  Regenerate the bands with the current code and a smaller `GeV` (see above).
+- **Edge returns `inf`.** `step` too small for a far upper edge; use `step=1.5`
+  (default reach `v0·step^25`) or raise `max_bracket`.
 
 ### Backend differences
 
@@ -216,7 +241,7 @@ switches it on the fly (the OSQP cache is cleared automatically).
 | Free solve | stable | fast |
 | Fixed-parameter solve | stable | CLARABEL (OSQP does not converge at large `n`) |
 | MC parallelism (`n_jobs`) | works | serial |
-| Flux shape | algorithm-dependent vertex | explicit piecewise-constant vertex via HiGHS |
+| Flux shape | algorithm-dependent vertex | explicit piecewise-constant vertex via simplex LP (HiGHS → GLPK → SciPy) |
 
 ---
 
@@ -261,11 +286,14 @@ README.md
 ```bash
 pip install numpy scipy matplotlib pandas numba
 pip install cvxpy osqp        # solver='osqp' を使う場合に必須
-pip install joblib            # scipy バックエンドのモンテカルロ並列化 (任意)
+pip install highspy           # 任意: 階段状フラックスを最速で求める頂点ソルバー
+pip install joblib            # 任意: scipy バックエンドのモンテカルロ並列化
 ```
 
-`cvxpy` は CLARABEL / SCS / HiGHS も同梱する（バックエンドのフォールバックと頂点選択に使用）。
-Python 3.12 で動作確認。
+`cvxpy` は CLARABEL / SCS を同梱（フォールバックに使用）。区分定数（階段状）の
+フラックスには *シンプレックス* 系 LP ソルバーが必要で、コードは HiGHS → GLPK →
+SciPy-linprog の順に試す。SciPy は cvxpy に同梱されるため `highspy` が無くても
+階段状になるが、`highspy` を入れると頂点選択が速くなる。Python 3.12 で動作確認。
 
 ### 基本的な使い方
 
@@ -406,9 +434,27 @@ a_flat.plot_band_comparison(
   （rank 29）。χ² 最小解は 151 次元の面となり、フラックスは一意に定まらない。
   scipy / osqp は等価最適解の中の異なる点を返しうる。**Δχ² プロファイル（信頼区間）は
   χ² のみに依存し、この非一意性に左右されない**ため、物理的結論は安定。
-- **OSQP のスケーリング**: 自然単位定数 `c` が ~1e70 と巨大なため、内部で列スケーリング
-  してから解く。これがないと OSQP/CLARABEL は誤った点を `optimal` として返す。
+- **スケーリング（QP と頂点 LP）**: 自然単位定数 `c` が ~1e70 と巨大なため、OSQP の QP も
+  頂点選択 LP も内部で列スケーリング（`x = D·z`）してから解く。これがないと OSQP/CLARABEL は
+  誤った点を `optimal` として返し、LP は `M_s·x = μ` を緩くしか満たさず、返ってくる
+  フラックスの χ² が QP の報告値より桁違いに大きくなる（`GeV` が大きいほど顕著）。
+- **GeV の選択が OSQP 精度に効く**: 物理フラックスは GeV 不変だが、OSQP の *相対* 精度は
+  `GeV` が大きいほど悪化する。同じしきい値で `GeV` ≈ 0.3–0.6e16 なら χ²/c ~1e-13、
+  `GeV=1e16` で ~1e-8、`2e16` で ~1e-7。狭いバンド（大きい `T`）では効くので、
+  動く範囲で小さい `GeV` を選ぶとよい。
 - **バンド探索の前提**: バンドが連結（上下に交差点 1 つずつ）であることを仮定する。
+
+### トラブルシュート
+
+- **階段状にならない（なめらかなランプになる）**: 頂点選択にはシンプレックス系 LP ソルバーが
+  必要。見つからないとフラックスはなめらかな内点解にフォールバックし、一度だけ
+  `RuntimeWarning` を出す。`pip install highspy`、または同梱の SciPy ソルバーに頼る
+  （`cvxpy.installed_solvers()` に `'SCIPY'` があるか確認）。
+- **バンドがガタガタ／非単調、特に大きい `T` で**: たいていスケーリング修正前に作った
+  古いバンドのキャッシュか、`GeV` が大きすぎるのが原因。現行コードと小さめの `GeV` で
+  バンドを作り直す（上記参照）。
+- **端が `inf` になる**: 遠い上端に対して `step` が小さすぎる。`step=1.5`（到達範囲は
+  既定で `v0·step^25`）にするか `max_bracket` を増やす。
 
 ### バックエンドの違い（まとめ）
 
@@ -418,4 +464,4 @@ a_flat.plot_band_comparison(
 | フリー解 | 安定 | 高速 |
 | 固定パラメータ解 | 安定 | CLARABEL（OSQP は大規模で未収束のため） |
 | モンテカルロ並列 (`n_jobs`) | 有効 | 無効（逐次） |
-| フラックス形状 | アルゴリズム依存の頂点 | HiGHS で区分定数の頂点を明示選択 |
+| フラックス形状 | アルゴリズム依存の頂点 | シンプレックス LP（HiGHS→GLPK→SciPy）で区分定数の頂点を明示選択 |
