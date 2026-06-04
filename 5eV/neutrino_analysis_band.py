@@ -1243,6 +1243,89 @@ class NeutrinoAnalysis:
                 fname = f'band_comparison_level{level:.3f}.pdf'
             plt.savefig(fname); print(f"Plot saved as {fname}")
 
+    def generate_pseudo_data(self, num_pseudo_data=500, seed=None, x=None):
+        """
+        Generate Gaussian pseudo-data sets around the model expectation, without
+        running any fits (this is just the data-generation step of the Monte
+        Carlo). Each set is in event units (counts over the observation time T):
+
+            Event_i = T * (M @ x / c + Bkg / c)_i ,
+            pseudo  ~ Normal(Event, sqrt(|Event|)) .
+
+        ``x`` defaults to the free best fit ``self.result.x`` (optimize() is run
+        on the real data if needed). Stores and returns ``self.pseudo_data_sets``.
+        """
+        if x is None:
+            if self.result is None:
+                self.optimize(self.data_vector)
+            x = self.result.x
+        model = self.M_matrix @ x / self.c               # = modPrime
+        Event = self.T * (model + self.Bkg_vector / self.c)
+        if seed is not None:
+            np.random.seed(seed)
+        self.pseudo_data_sets = [
+            np.random.normal(Event, scale=np.sqrt(np.abs(Event)))
+            for _ in range(num_pseudo_data)
+        ]
+        return self.pseudo_data_sets
+
+    def plot_pseudo_data_bins(self, num_pseudo_data=500, seed=None,
+                              regenerate=False, show_lines=False,
+                              save=True, fname=None):
+        """
+        Per-bin comparison of the pseudo-data sets against the real data.
+
+        If no pseudo-data exist yet (or ``regenerate=True``), this generates
+        ``num_pseudo_data`` sets via ``generate_pseudo_data`` first -- no Monte
+        Carlo fitting is performed. If a previous run already populated
+        ``self.pseudo_data_sets`` (e.g. run_full_monte_carlo_analysis), those
+        are reused unless ``regenerate=True``.
+
+        Both are in event units (counts over the observation time ``T``): the
+        pseudo sets are Gaussian draws around the model, and the real data is
+        ``T * data_vector / c``. By default the pseudo spread is shown as the
+        median plus 68%% / 95%% percentile bands; ``show_lines=True`` overlays
+        every pseudo set as a faint step line. The real data is drawn with
+        sqrt(N) (Poisson) error bars.
+        """
+        if regenerate or not getattr(self, 'pseudo_data_sets', None):
+            self.generate_pseudo_data(num_pseudo_data, seed)
+        pseudo = np.asarray(self.pseudo_data_sets)          # (N, m) event counts
+        true_ev = self.T * self.data_vector / self.c        # (m,) real-data events
+        edges = self.bins
+        centers = 0.5 * (edges[:-1] + edges[1:])
+        n = len(pseudo)
+
+        plt.figure(figsize=(8, 6))
+        if show_lines:
+            for row in pseudo:
+                plt.step(centers, row, where='mid', color='C0',
+                         alpha=min(0.05, 5.0 / max(n, 1)), lw=0.5)
+            plt.step([], [], color='C0', label=f'{n} pseudo sets')
+        else:
+            lo95, lo68, med, hi68, hi95 = np.percentile(
+                pseudo, [2.5, 16, 50, 84, 97.5], axis=0)
+            plt.fill_between(centers, lo95, hi95, step='mid', color='C0',
+                             alpha=0.20, label='pseudo 95%')
+            plt.fill_between(centers, lo68, hi68, step='mid', color='C0',
+                             alpha=0.35, label='pseudo 68%')
+            plt.step(centers, med, where='mid', color='C0', lw=1.0,
+                     label='pseudo median')
+
+        plt.errorbar(centers, true_ev, yerr=np.sqrt(np.abs(true_ev)),
+                     fmt='o', ms=3, color='k', capsize=2, zorder=5,
+                     label='True data')
+        plt.xlabel('Recoil energy bin'); plt.ylabel('Events')
+        plt.title(f'Pseudo-data vs. true data '
+                  f'(Bkg: {self.background_scenario}, T={self.T}, N={n})')
+        plt.legend(fontsize=8); plt.grid(True, ls='--', alpha=0.5)
+        if save:
+            os.makedirs(self.scenario_dir, exist_ok=True)
+            if fname is None:
+                fname = (f'{self.scenario_dir}/'
+                         f'pseudo_vs_true_bins_bkg_{self.background_scenario}.pdf')
+            plt.savefig(fname); print(f"Plot saved as {fname}")
+
     def plot_scan_results(self, index, fixed_values, chi_sq_results, save=True):
         plt.figure(figsize=(8, 6))
         fv = fixed_values * (self.cm ** 2 * self.sec)
