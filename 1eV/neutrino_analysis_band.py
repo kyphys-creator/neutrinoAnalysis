@@ -103,7 +103,7 @@ class _ScipyBackend:
         M = p.M_matrix
         T = p.T
 
-        if data is p.data_vector:
+        if data is p.data_vector and p._bkg_varied is None:
             dmb, inv_d, H = p._dmb_default, p._inv_d_default, p._hess_default
         else:
             dmb, inv_d = p._make_dmb_inv(data)
@@ -331,9 +331,16 @@ class _OSQPBackend:
         """Fill in the cvxpy Parameters from a (scaled) data vector."""
         p = self.p
         data_s = data / p.c
-        bkg_s = p.Bkg_vector / p.c
-        safe = np.where(data_s > 0, data_s, 1.0)
-        inv_d_s = np.where(data_s > 0, 1.0 / safe, 0.0)
+        if p._bkg_varied is None:
+            bkg_s = p.Bkg_vector / p.c
+            denom_s = data_s
+        else:
+            # Background-penalty mode: the per-bin nuisance B_i^fit is profiled
+            # out analytically, leaving (d − B_varied − M·x)² / (d + B_varied).
+            bkg_s = p._bkg_varied / p.c
+            denom_s = data_s + bkg_s
+        safe = np.where(denom_s > 0, denom_s, 1.0)
+        inv_d_s = np.where((data_s > 0) & (denom_s > 0), 1.0 / safe, 0.0)
         w = np.sqrt(p.T * inv_d_s)
         z = w * (data_s - bkg_s)
         # Add a tiny floor to w to keep the residual operator well-conditioned
@@ -439,7 +446,8 @@ class NeutrinoAnalysis:
 
     # ----------------------------------------------------------------
     def __init__(self, background_scenario='c', intervals='180',
-                 GeV=1e-6, c=1, solver='scipy', T=3):
+                 GeV=1e-6, c=1, solver='scipy', T=3,
+                 bkg_penalty=False, bkg_zero_threshold=1e-3):
         self.iterationTime = 1000
         self.T = T
         self.GeV = GeV
@@ -455,6 +463,17 @@ class NeutrinoAnalysis:
         self._build_ordering_constraint()
 
         self.result = None
+        # Background-penalty (nuisance-background) option. When on, the Monte
+        # Carlo draws a "measured" background B_varied per pseudo-experiment
+        # (beta-distributed ratio f = B/O^MC) and the fit χ² gains the term
+        # Σ (B_fit − B_varied)²/B_varied, profiled analytically (see
+        # _make_dmb_inv). Default off → behaviour identical to before.
+        self.bkg_penalty = bool(bkg_penalty)
+        self.bkg_zero_threshold = bkg_zero_threshold   # events; B below → no penalty
+        self._bkg_varied = None        # per-fit override (scaled units) or None
+        self._baseline_mode = None     # bkg_penalty state of cached baseline
+        self._max_sampling_records = 2000
+        self.reset_bkg_penalty_stats()
         self.set_background(background_scenario)
         self.set_solver(solver)
 
@@ -591,9 +610,25 @@ class NeutrinoAnalysis:
             self._backend.reset_cache()
 
     def _make_dmb_inv(self, data):
-        safe = np.where(data > 0, data, 1.0)
-        inv = np.where(data > 0, 1.0 / safe, 0.0)
-        return data - self.Bkg_vector, inv
+        if self._bkg_varied is None:
+            safe = np.where(data > 0, data, 1.0)
+            inv = np.where(data > 0, 1.0 / safe, 0.0)
+            return data - self.Bkg_vector, inv
+        # Background-penalty mode. In per-bin event counts (N observed, s signal,
+        # b the background nuisance, Bv its beta-sampled "measurement") the joint
+        #   χ² = Σ (N − T·s − b)²/N + Σ (b − Bv)²/Bv
+        # is quadratic in each b_i (Neyman denominators are fixed), so the inner
+        # minimisation is exact and leaves the profiled form
+        #   χ² = Σ (N − T·s − Bv)² / (N + Bv)
+        # — the two variances simply add. In the code's scaled units this is the
+        # same quadratic with dmb = data − Bv and inv_data = 1/(data + Bv), so
+        # the kernels, Hessian and both backends are reused unchanged. b_i is
+        # left unconstrained (no b ≥ 0 bound), matching a plain joint fit.
+        bkg = self._bkg_varied
+        denom = data + bkg
+        safe = np.where(denom > 0, denom, 1.0)
+        inv = np.where((data > 0) & (denom > 0), 1.0 / safe, 0.0)
+        return data - bkg, inv
 
     def _build_hessian_from(self, _dmb, inv_data):
         return (2.0 * self.T) * (self.M_matrix.T * inv_data) @ self.M_matrix
@@ -666,29 +701,36 @@ class NeutrinoAnalysis:
 
     # ---------- Monte Carlo ----------
     @staticmethod
-    def _fit_one_pseudo(pseudo_data_scaled, fixed_index, fixed_value, x0_seed, analysis):
+    def _fit_one_pseudo(pseudo_data_scaled, fixed_index, fixed_value, x0_seed, analysis,
+                        bkg_varied_scaled=None):
         result_dict = {}
+        if bkg_varied_scaled is not None:
+            analysis._bkg_varied = bkg_varied_scaled
         try:
-            res_free = analysis.optimize(pseudo_data_scaled / analysis.T,
-                                         x0=x0_seed.copy(), display=False)
-            result_dict.update(chi2_free=res_free.fun / analysis.c,
-                               x_free=res_free.x,
-                               success_free=res_free.success)
-        except Exception as e:
-            return {**result_dict, 'chi2_free': None, 'x_free': None,
-                    'success_free': False, 'error': repr(e)}
-        try:
-            res_fixed = analysis.optimize_with_fixed_parameter(
-                pseudo_data_scaled / analysis.T,
-                fixed_index, fixed_value,
-                x0=res_free.x.copy()
-            )
-            result_dict.update(chi2_fixed=res_fixed.fun / analysis.c,
-                               x_fixed=res_fixed.x,
-                               success_fixed=res_fixed.success)
-        except Exception as e:
-            return {**result_dict, 'chi2_fixed': None, 'x_fixed': None,
-                    'success_fixed': False, 'error': repr(e)}
+            try:
+                res_free = analysis.optimize(pseudo_data_scaled / analysis.T,
+                                             x0=x0_seed.copy(), display=False)
+                result_dict.update(chi2_free=res_free.fun / analysis.c,
+                                   x_free=res_free.x,
+                                   success_free=res_free.success)
+            except Exception as e:
+                return {**result_dict, 'chi2_free': None, 'x_free': None,
+                        'success_free': False, 'error': repr(e)}
+            try:
+                res_fixed = analysis.optimize_with_fixed_parameter(
+                    pseudo_data_scaled / analysis.T,
+                    fixed_index, fixed_value,
+                    x0=res_free.x.copy()
+                )
+                result_dict.update(chi2_fixed=res_fixed.fun / analysis.c,
+                                   x_fixed=res_fixed.x,
+                                   success_fixed=res_fixed.success)
+            except Exception as e:
+                return {**result_dict, 'chi2_fixed': None, 'x_fixed': None,
+                        'success_fixed': False, 'error': repr(e)}
+        finally:
+            if bkg_varied_scaled is not None:
+                analysis._bkg_varied = None
 
         result_dict['delta_chi2'] = abs(result_dict['chi2_fixed'] - result_dict['chi2_free'])
         return result_dict
@@ -700,8 +742,17 @@ class NeutrinoAnalysis:
         # keeps it from being overwritten by the pseudo-data fits below (each
         # _fit_one_pseudo calls optimize(), which sets self.result). The cache
         # is cleared in set_background when the data changes.
-        if getattr(self, '_baseline_result', None) is None:
+        use_pen = self.bkg_penalty
+        if use_pen:
+            # For the *real* data the "measured" background is the nominal B_i
+            # (penalty term vanishes at B_fit = B_i, but the profiled
+            # denominator becomes data + B), so the observed Δχ² uses the same
+            # statistic as the pseudo-experiments.
+            self._bkg_varied = self.Bkg_vector
+        if (getattr(self, '_baseline_result', None) is None
+                or getattr(self, '_baseline_mode', None) != use_pen):
             self._baseline_result = self.optimize(self.data_vector, display=False)
+            self._baseline_mode = use_pen
         result = self._baseline_result
 
         # The Monte Carlo only needs χ² (for Δχ²) and modPrime = M·x / c. Both
@@ -730,29 +781,55 @@ class NeutrinoAnalysis:
             print(f"Generating {num_pseudo_data} pseudo-data sets "
                   f"(idx={fixed_index}, value={self.cm**2 * self.sec * fixed_value:.3e})")
 
+        # Beta sampling uses its own Generator so the legacy np.random stream
+        # (and therefore the O_i^MC draws with bkg_penalty off) is unchanged.
+        rng_beta = np.random.default_rng(seed) if use_pen else None
         if seed is not None:
             np.random.seed(seed)
         self.pseudo_data_sets = []
         self.pseudo_data_scaled = []
+        self.pseudo_bkg_varied_scaled = []
         bw = np.diff(self.bins)
         for _ in range(num_pseudo_data):
             Event = self.T * (self.modPrime_physical * bw + self.Bkg_vector / self.c)
             pseudo_data = np.random.normal(Event, scale=np.sqrt(np.abs(Event)))
+            if use_pen:
+                # O_i^MC ≤ 0 cannot anchor the ratio f = B/O — resample those
+                # bins (counted in bkg_penalty_stats); after 100 tries fall
+                # back to the expectation.
+                for _try in range(100):
+                    bad = pseudo_data <= 0
+                    if not bad.any():
+                        break
+                    self.bkg_penalty_stats['neg_O_resampled'] += int(bad.sum())
+                    pseudo_data[bad] = np.random.normal(
+                        Event[bad], np.sqrt(np.abs(Event[bad])))
+                else:
+                    bad = pseudo_data <= 0
+                    self.bkg_penalty_stats['neg_O_clipped'] += int(bad.sum())
+                    pseudo_data[bad] = np.abs(Event[bad])
+                Bv_ev, _f = self._sample_varied_background(pseudo_data, rng_beta)
+                self.bkg_penalty_stats['n_pseudo'] += 1
+                self.pseudo_bkg_varied_scaled.append(Bv_ev * self.c / self.T)
             self.pseudo_data_sets.append(pseudo_data)
             self.pseudo_data_scaled.append(pseudo_data * self.c)
 
+        bkg_list = (self.pseudo_bkg_varied_scaled if use_pen
+                    else [None] * num_pseudo_data)
         x0_seed = self.best_fit_flux
         # joblib parallelism is meaningful only for the scipy backend; OSQP is
         # already fast and cvxpy problems are awkward to ship across processes.
         if n_jobs != 1 and _HAS_JOBLIB and self.solver == 'scipy':
             self.fit_results = Parallel(n_jobs=n_jobs, prefer='processes')(
-                delayed(self._fit_one_pseudo)(pd_, fixed_index, fixed_value, x0_seed, self)
-                for pd_ in self.pseudo_data_scaled
+                delayed(self._fit_one_pseudo)(pd_, fixed_index, fixed_value,
+                                              x0_seed, self, bkg_)
+                for pd_, bkg_ in zip(self.pseudo_data_scaled, bkg_list)
             )
         else:
             self.fit_results = []
-            for i, pd_ in enumerate(self.pseudo_data_scaled, 1):
-                r = self._fit_one_pseudo(pd_, fixed_index, fixed_value, x0_seed, self)
+            for i, (pd_, bkg_) in enumerate(zip(self.pseudo_data_scaled, bkg_list), 1):
+                r = self._fit_one_pseudo(pd_, fixed_index, fixed_value,
+                                         x0_seed, self, bkg_)
                 if verbose:
                     print(f"  [{i}/{num_pseudo_data}] "
                           f"χ²_free={r.get('chi2_free')}  "
@@ -763,6 +840,7 @@ class NeutrinoAnalysis:
         # with the last pseudo-data fit, which would otherwise corrupt the
         # flux scatter in plot_flux_comparison / plot_flux_with_bands.
         self.result = result
+        self._bkg_varied = None
         if _has_vs:
             self._backend.vertex_select = _saved_vs
 
@@ -781,6 +859,133 @@ class NeutrinoAnalysis:
         )
         self.fixed_value_included = fixed_value if is_in_range else None
         return is_in_range
+
+    # ---------- background penalty (nuisance background) ----------
+    def set_bkg_penalty(self, on=True):
+        """Toggle the background-penalty χ² used by the Monte Carlo.
+
+        When on, every pseudo-experiment also draws a "measured" background
+        B_varied_i = f_i · O_i^MC with f_i ~ Beta(α_i, β_i) (so 0 < B_varied <
+        O^MC and the signal can never go negative), and the fit χ² gains the
+        penalty Σ (B_fit − B_varied)²/B_varied with B_fit profiled out
+        analytically. Default off reproduces the previous behaviour exactly.
+        """
+        self.bkg_penalty = bool(on)
+        self._baseline_result = None
+        self._baseline_mode = None
+
+    def reset_bkg_penalty_stats(self):
+        """Clear the edge-case counters and stored sampling records."""
+        self.bkg_penalty_stats = {
+            'n_pseudo': 0,            # pseudo-experiments sampled
+            'neg_O_resampled': 0,     # bin draws redone because O^MC ≤ 0
+            'neg_O_clipped': 0,       # bins clipped to the expectation after 100 tries
+            'mu_clipped': 0,          # μ = B/O ≥ 1 clipped to 1 − 1e−6
+            'sigma2_clipped': 0,      # σ² ≥ μ(1−μ) clipped to 0.99·μ(1−μ)
+            'zero_bkg_bins': 0,       # bin draws skipped because B < threshold
+        }
+        self.bkg_sampling_records = []
+
+    def _sample_varied_background(self, O_events, rng):
+        """
+        Draw the "measured" background for one pseudo-experiment (§3 of the
+        spec). Per bin: μ = B/O^MC, σ² = B/(O^MC)² (Poisson Var(B) = B
+        normalised by O^MC), converted to Beta(α, β) shape parameters via
+        ν = μ(1−μ)/σ² − 1, α = μν, β = (1−μ)ν; then B_varied = f·O^MC with
+        f ~ Beta(α, β), which guarantees 0 < B_varied < O^MC.
+
+        Edge cases (counted in ``bkg_penalty_stats``):
+        - μ ≥ 1 (O^MC fluctuated below B): clip μ to 1 − 1e−6.
+        - σ² ≥ μ(1−μ) (beta-validity violated, ≈ B > O^MC − 1): clip σ² to
+          0.99·μ(1−μ).
+        - B < ``bkg_zero_threshold`` events: degenerate α → 0; the bin is
+          excluded from the penalty (B_varied = 0, which reduces that bin to
+          the ordinary χ² term).
+
+        Returns ``(B_varied, f)`` in event counts.
+        """
+        eps_mu = 1e-6
+        B_ev = self.T * self.Bkg_vector / self.c
+        nbin = len(B_ev)
+        f = np.zeros(nbin)
+        Bv = np.zeros(nbin)
+        mu_t = np.zeros(nbin)
+        s2_t = np.zeros(nbin)
+        stats = self.bkg_penalty_stats
+
+        zero = B_ev < self.bkg_zero_threshold
+        stats['zero_bkg_bins'] += int(zero.sum())
+        act = ~zero & (O_events > 0)
+        if act.any():
+            O = O_events[act]
+            B = B_ev[act]
+            mu = B / O
+            clip = mu >= 1.0 - eps_mu
+            stats['mu_clipped'] += int(clip.sum())
+            mu = np.where(clip, 1.0 - eps_mu, mu)
+            s2 = B / O ** 2
+            cap = mu * (1.0 - mu)
+            viol = s2 >= cap
+            stats['sigma2_clipped'] += int(viol.sum())
+            s2 = np.where(viol, 0.99 * cap, s2)
+            nu = mu * (1.0 - mu) / s2 - 1.0
+            alpha = mu * nu
+            beta = (1.0 - mu) * nu
+            fs = rng.beta(alpha, beta)
+            f[act] = fs
+            Bv[act] = fs * O
+            mu_t[act] = mu
+            s2_t[act] = s2
+
+        if len(self.bkg_sampling_records) < self._max_sampling_records:
+            self.bkg_sampling_records.append(
+                {'mu': mu_t, 'sigma2': s2_t, 'f': f, 'active': act,
+                 'B_varied': Bv, 'O_mc': np.array(O_events)})
+        return Bv, f
+
+    def plot_bkg_sampling_check(self, save=True, fname=None):
+        """
+        Sanity check of the beta sampling (§3.1): pooled over the stored
+        records, the standardised residuals (f − μ)/σ should have mean ≈ 0 and
+        std ≈ 1, and the f histogram should live in (0, 1). Also prints the
+        edge-case counters. Returns a small summary dict.
+        """
+        recs = self.bkg_sampling_records
+        if not recs:
+            raise RuntimeError("No sampling records — run the Monte Carlo "
+                               "with bkg_penalty on first.")
+        f, mu, s2, bv = [], [], [], []
+        for r in recs:
+            a = r['active']
+            f.append(r['f'][a]); mu.append(r['mu'][a])
+            s2.append(r['sigma2'][a]); bv.append(r['B_varied'][a])
+        f = np.concatenate(f); mu = np.concatenate(mu)
+        s2 = np.concatenate(s2); bv = np.concatenate(bv)
+        z = (f - mu) / np.sqrt(s2)
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+        axes[0].hist(f, bins=50)
+        axes[0].set_xlabel(r'$f = B_\mathrm{varied}/O^\mathrm{MC}$')
+        axes[0].set_title(f'ratio samples (n={len(f)})')
+        axes[1].hist(z, bins=50)
+        axes[1].set_xlabel(r'$(f - \mu)/\sigma$')
+        axes[1].set_title(f'standardised: mean={z.mean():.3f}, std={z.std():.3f}')
+        axes[2].hist(bv, bins=50)
+        axes[2].set_xlabel(r'$B_\mathrm{varied}$ [events]')
+        axes[2].set_title('varied background')
+        fig.tight_layout()
+        print("bkg_penalty_stats:", self.bkg_penalty_stats)
+        if save:
+            os.makedirs(self.scenario_dir, exist_ok=True)
+            if fname is None:
+                fname = f'bkg_sampling_check_bkg_{self.background_scenario}.pdf'
+            path = os.path.join(self.scenario_dir, fname)
+            fig.savefig(path)
+            print(f"Plot saved as {path}")
+        return {'n_samples': len(f),
+                'std_resid_mean': float(z.mean()),
+                'std_resid_std': float(z.std()),
+                'stats': dict(self.bkg_penalty_stats)}
 
     def scan_fixed_parameter(self, fixed_index, scan_range=0.35, num_points=11,
                              num_pseudo_data=10, seed=None, n_jobs=1):
@@ -961,6 +1166,7 @@ class NeutrinoAnalysis:
             'band_raw': band_raw,
             'band_physical': band_phys,
             'n_evaluations': len(cache),
+            'bkg_penalty': self.bkg_penalty,
         }
 
     # ---------- plotting ----------
@@ -1005,12 +1211,18 @@ class NeutrinoAnalysis:
     def save_band(self, band, outdir='bands', fname=None):
         """Write one ``find_confidence_band`` result to JSON (one file per index)."""
         os.makedirs(outdir, exist_ok=True)
+        pen = bool(band.get('bkg_penalty', getattr(self, 'bkg_penalty', False)))
         if fname is None:
-            fname = f'band_bkg{self.background_scenario}_idx{band["index"]:03d}.json'
+            # '_bkgpen' suffix keeps penalty bands from overwriting the
+            # standard ones, so the two constructions can be compared.
+            suffix = '_bkgpen' if pen else ''
+            fname = (f'band_bkg{self.background_scenario}'
+                     f'_idx{band["index"]:03d}{suffix}.json')
         path = os.path.join(outdir, fname)
         obj = {
             'index': int(band['index']),
             'background_scenario': self.background_scenario,
+            'bkg_penalty': pen,
             'best_fit_raw': float(band['best_fit_raw']),
             'best_fit_physical': float(band['best_fit_physical']),
             'levels': [float(l) for l in band['levels']],
