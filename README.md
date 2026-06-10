@@ -198,6 +198,39 @@ Notes:
 `background_scenario` ∈ `{'a', 'b', 'b2', 'c', 'flat', 'none'}`. `set_background()`
 switches it on the fly (the OSQP cache is cleared automatically).
 
+### Background penalty option (experimental)
+
+By default the background B_i = h_i + b_i is fixed in the χ². With
+`bkg_penalty=True` (constructor flag, or `a.set_bkg_penalty(True)`), each
+pseudo-experiment also draws a "measured" background
+`B_varied_i = f_i · O_i^MC` with `f_i ~ Beta(α_i, β_i)` (mean `B_i/O_i^MC`,
+variance `B_i/(O_i^MC)²`; the beta support guarantees `0 < B_varied < O^MC`,
+so the signal never goes negative), and the fit χ² becomes
+
+```
+χ² = Σ (O − B_fit − M·x)²/O + Σ (B_fit − B_varied)²/B_varied
+```
+
+with the per-bin nuisance `B_fit` profiled out analytically (exact — the inner
+problem is quadratic), leaving `Σ (O − B_varied − M·x)²/(O + B_varied)`. Both
+backends support it; default off reproduces the previous behaviour bit-for-bit.
+
+```python
+a = NeutrinoAnalysis(background_scenario='flat', intervals='180',
+                     GeV=0.32e16, solver='osqp', T=3, bkg_penalty=True)
+a.optimize(a.data_vector)
+a.find_and_save_band(10, num_pseudo_data=50, n_pseudo_edge=500, seed=42)
+# saved as band_bkgflat_idx010_bkgpen.json — never overwrites standard bands
+a.plot_bkg_sampling_check()   # sanity check of the beta sampling
+print(a.bkg_penalty_stats)    # edge-case counters (μ≥1 clips, σ² clips, …)
+```
+
+Edge cases: `μ_i ≥ 1` is clipped to `1 − 1e−6`; `σ² ≥ μ(1−μ)` is clipped to
+`0.99·μ(1−μ)`; bins with `B_i <` `bkg_zero_threshold` (default 1e−3 events) are
+excluded from the penalty; `O^MC ≤ 0` bins are resampled. All occurrences are
+counted in `bkg_penalty_stats`. Note `'none'` has `B_i = 0` everywhere, so the
+penalty is inert there.
+
 ### Caveats
 
 - **Underdeterminacy.** With `intervals='180'` there are 180 flux parameters
@@ -427,6 +460,38 @@ a_flat.plot_band_comparison(
 
 `background_scenario` は `'a' / 'b' / 'b2' / 'c' / 'flat' / 'none'` から選ぶ。
 `set_background()` で実行中に切り替え可能（OSQP のキャッシュは自動でクリアされる）。
+
+### バックグラウンドペナルティオプション（試験実装）
+
+既定では背景 B_i = h_i + b_i は χ² 内で固定。`bkg_penalty=True`（コンストラクタ
+引数、または `a.set_bkg_penalty(True)`）にすると、疑似実験ごとに「測定された」
+背景 `B_varied_i = f_i · O_i^MC`（`f_i ~ Beta(α_i, β_i)`、平均 `B_i/O_i^MC`、
+分散 `B_i/(O_i^MC)²`。ベータ分布の台により `0 < B_varied < O^MC` が保証され
+負の信号は生じない）も生成し、χ² が
+
+```
+χ² = Σ (O − B_fit − M·x)²/O + Σ (B_fit − B_varied)²/B_varied
+```
+
+になる。ビンごとのニューサンス `B_fit` は解析的にプロファイル（内側問題が
+2 次なので厳密）され、`Σ (O − B_varied − M·x)²/(O + B_varied)` に帰着する。
+両バックエンド対応。既定 off では従来とビット単位で同一の挙動。
+
+```python
+a = NeutrinoAnalysis(background_scenario='flat', intervals='180',
+                     GeV=0.32e16, solver='osqp', T=3, bkg_penalty=True)
+a.optimize(a.data_vector)
+a.find_and_save_band(10, num_pseudo_data=50, n_pseudo_edge=500, seed=42)
+# 保存名は band_bkgflat_idx010_bkgpen.json — 通常バンドを上書きしない
+a.plot_bkg_sampling_check()   # ベータサンプリングのサニティチェック
+print(a.bkg_penalty_stats)    # エッジケースのカウンタ（μ≥1 クリップ等）
+```
+
+エッジケース: `μ_i ≥ 1` は `1 − 1e−6` にクリップ、`σ² ≥ μ(1−μ)` は
+`0.99·μ(1−μ)` にクリップ、`B_i <` `bkg_zero_threshold`（既定 1e−3 イベント）の
+ビンはペナルティから除外、`O^MC ≤ 0` のビンは再サンプリング。全て
+`bkg_penalty_stats` でカウントされる。なお `'none'` は全ビン `B_i = 0` のため
+ペナルティは不活性。
 
 ### 注意点
 
