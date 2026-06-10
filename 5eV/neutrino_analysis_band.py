@@ -1094,7 +1094,7 @@ class NeutrinoAnalysis:
     def find_confidence_band(self, fixed_index, levels=(0.678, 0.90, 0.954),
                              num_pseudo_data=30, n_pseudo_edge=200,
                              step=1.5, rel_tol=0.03, max_bracket=25,
-                             seed=42, n_jobs=1, verbose=True):
+                             seed=42, n_jobs=1, verbose=True, bkg_penalty=None):
         """
         Locate the confidence-band edges for one flux parameter by root finding
         instead of a uniform grid. The widest level brackets the outer edges;
@@ -1103,9 +1103,15 @@ class NeutrinoAnalysis:
         Monte-Carlo noise in the cutoff. ``seed`` is fixed so each value is
         reproducible (keeps the bisection from jittering).
 
+        ``bkg_penalty`` switches the background-penalty χ² on/off for this and
+        subsequent runs (sticky, like ``set_background``); ``None`` keeps the
+        current setting.
+
         Returns a dict: per level a (lower, upper) pair in raw units, plus the
         same in physical units, and the best-fit value.
         """
+        if bkg_penalty is not None and bool(bkg_penalty) != self.bkg_penalty:
+            self.set_bkg_penalty(bkg_penalty)
         if self.result is None:
             self.optimize(self.data_vector)
         levels = tuple(sorted(levels))
