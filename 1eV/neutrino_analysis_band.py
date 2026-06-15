@@ -210,7 +210,9 @@ class _OSQPBackend:
         Build a parameterised problem so that *any* data vector for this
         background scenario can be plugged in by setting cvxpy Parameters.
         Only ``fixed_index`` changes the structure (adds an equality
-        constraint), so that's the only cache key.
+        constraint), so that's the only cache key. The background-penalty
+        mode reuses this exact problem; it only swaps which background is
+        subtracted (see ``_set_data_params``).
         """
         p = self.p
         n, m = p.n, p.m
@@ -328,25 +330,21 @@ class _OSQPBackend:
         return None
 
     def _set_data_params(self, data, w_par, z_par):
-        """Fill in the cvxpy Parameters from a (scaled) data vector."""
+        """Fill in the cvxpy Parameters from a (scaled) data vector.
+
+        In background-penalty mode the only change is the background that gets
+        subtracted: the per-pseudo-experiment ``_bkg_varied`` instead of the
+        nominal ``Bkg_vector``. The Neyman denominator stays d_s (= O), so the
+        statistic is T·Σ (O − B_varied − M·x)²/O."""
         p = self.p
         data_s = data / p.c
-        if p._bkg_varied is None:
-            bkg_s = p.Bkg_vector / p.c
-            denom_s = data_s
-        else:
-            # Background-penalty mode: the per-bin nuisance B_i^fit is profiled
-            # out analytically, leaving (d − B_varied − M·x)² / (d + B_varied).
-            bkg_s = p._bkg_varied / p.c
-            denom_s = data_s + bkg_s
-        safe = np.where(denom_s > 0, denom_s, 1.0)
-        inv_d_s = np.where((data_s > 0) & (denom_s > 0), 1.0 / safe, 0.0)
+        bkg = p.Bkg_vector if p._bkg_varied is None else p._bkg_varied
+        bkg_s = bkg / p.c
+        safe = np.where(data_s > 0, data_s, 1.0)
+        inv_d_s = np.where(data_s > 0, 1.0 / safe, 0.0)
         w = np.sqrt(p.T * inv_d_s)
-        z = w * (data_s - bkg_s)
-        # Add a tiny floor to w to keep the residual operator well-conditioned
-        # when many bins have zero weight. (Optional; doesn't change the optimum.)
         w_par.value = w
-        z_par.value = z
+        z_par.value = w * (data_s - bkg_s)
 
     def solve(self, data, x0=None, extra_constraints=None,
               fixed_index=None, fixed_value=None, display=False):
@@ -463,11 +461,14 @@ class NeutrinoAnalysis:
         self._build_ordering_constraint()
 
         self.result = None
-        # Background-penalty (nuisance-background) option. When on, the Monte
+        # Background-penalty (varied-background) option. When on, the Monte
         # Carlo draws a "measured" background B_varied per pseudo-experiment
-        # (beta-distributed ratio f = B/O^MC) and the fit χ² gains the term
-        # Σ (B_fit − B_varied)²/B_varied, profiled analytically (see
-        # _make_dmb_inv). Default off → behaviour identical to before.
+        # (beta-distributed ratio f = B/O^MC) and the fit subtracts that
+        # B_varied instead of the nominal background, i.e. the χ² becomes
+        # T·Σ (O − B_varied − M·x)²/O. The background is fixed per fit (not a
+        # nuisance parameter); the variation across pseudo-experiments is what
+        # propagates the background uncertainty into the band. Default off →
+        # behaviour identical to before.
         self.bkg_penalty = bool(bkg_penalty)
         self.bkg_zero_threshold = bkg_zero_threshold   # events; B below → no penalty
         self._bkg_varied = None        # per-fit override (scaled units) or None
@@ -610,24 +611,15 @@ class NeutrinoAnalysis:
             self._backend.reset_cache()
 
     def _make_dmb_inv(self, data):
-        if self._bkg_varied is None:
-            safe = np.where(data > 0, data, 1.0)
-            inv = np.where(data > 0, 1.0 / safe, 0.0)
-            return data - self.Bkg_vector, inv
-        # Background-penalty mode. In per-bin event counts (N observed, s signal,
-        # b the background nuisance, Bv its beta-sampled "measurement") the joint
-        #   χ² = Σ (N − T·s − b)²/N + Σ (b − Bv)²/Bv
-        # is quadratic in each b_i (Neyman denominators are fixed), so the inner
-        # minimisation is exact and leaves the profiled form
-        #   χ² = Σ (N − T·s − Bv)² / (N + Bv)
-        # — the two variances simply add. In the code's scaled units this is the
-        # same quadratic with dmb = data − Bv and inv_data = 1/(data + Bv), so
-        # the kernels, Hessian and both backends are reused unchanged. b_i is
-        # left unconstrained (no b ≥ 0 bound), matching a plain joint fit.
-        bkg = self._bkg_varied
-        denom = data + bkg
-        safe = np.where(denom > 0, denom, 1.0)
-        inv = np.where((data > 0) & (denom > 0), 1.0 / safe, 0.0)
+        """χ² ingredients: dmb = data − Bkg and inv_data = 1/data on bins with
+        data > 0, so the kernel evaluates T·Σ (data − Bkg − M·x)²/data.
+
+        In background-penalty mode the only change is the background that is
+        subtracted: the per-pseudo-experiment ``_bkg_varied`` in place of the
+        nominal ``Bkg_vector``. The Neyman denominator (data) is unchanged."""
+        bkg = self.Bkg_vector if self._bkg_varied is None else self._bkg_varied
+        safe = np.where(data > 0, data, 1.0)
+        inv = np.where(data > 0, 1.0 / safe, 0.0)
         return data - bkg, inv
 
     def _build_hessian_from(self, _dmb, inv_data):
@@ -744,10 +736,10 @@ class NeutrinoAnalysis:
         # is cleared in set_background when the data changes.
         use_pen = self.bkg_penalty
         if use_pen:
-            # For the *real* data the "measured" background is the nominal B_i
-            # (penalty term vanishes at B_fit = B_i, but the profiled
-            # denominator becomes data + B), so the observed Δχ² uses the same
-            # statistic as the pseudo-experiments.
+            # For the *real* data the "measured" background is the nominal B_i,
+            # so the baseline fit subtracts B_i (identical to the standard fit)
+            # and the observed Δχ² uses the same statistic as the pseudo-
+            # experiments, which subtract their own B_varied.
             self._bkg_varied = self.Bkg_vector
         if (getattr(self, '_baseline_result', None) is None
                 or getattr(self, '_baseline_mode', None) != use_pen):
@@ -781,9 +773,10 @@ class NeutrinoAnalysis:
             print(f"Generating {num_pseudo_data} pseudo-data sets "
                   f"(idx={fixed_index}, value={self.cm**2 * self.sec * fixed_value:.3e})")
 
-        # Beta sampling uses its own Generator so the legacy np.random stream
-        # (and therefore the O_i^MC draws with bkg_penalty off) is unchanged.
-        rng_beta = np.random.default_rng(seed) if use_pen else None
+        # Background sampling uses its own Generator so the legacy np.random
+        # stream (and therefore the O_i^MC draws with bkg_penalty off) is
+        # unchanged.
+        rng_bkg = np.random.default_rng(seed) if use_pen else None
         if seed is not None:
             np.random.seed(seed)
         self.pseudo_data_sets = []
@@ -794,21 +787,10 @@ class NeutrinoAnalysis:
             Event = self.T * (self.modPrime_physical * bw + self.Bkg_vector / self.c)
             pseudo_data = np.random.normal(Event, scale=np.sqrt(np.abs(Event)))
             if use_pen:
-                # O_i^MC ≤ 0 cannot anchor the ratio f = B/O — resample those
-                # bins (counted in bkg_penalty_stats); after 100 tries fall
-                # back to the expectation.
-                for _try in range(100):
-                    bad = pseudo_data <= 0
-                    if not bad.any():
-                        break
-                    self.bkg_penalty_stats['neg_O_resampled'] += int(bad.sum())
-                    pseudo_data[bad] = np.random.normal(
-                        Event[bad], np.sqrt(np.abs(Event[bad])))
-                else:
-                    bad = pseudo_data <= 0
-                    self.bkg_penalty_stats['neg_O_clipped'] += int(bad.sum())
-                    pseudo_data[bad] = np.abs(Event[bad])
-                Bv_ev, _f = self._sample_varied_background(pseudo_data, rng_beta)
+                # The varied background is now drawn independently of the
+                # pseudo-data (Gaussian on B), so the pseudo-data is generated
+                # exactly as in the non-penalty case — no O > 0 resampling.
+                Bv_ev, _f = self._sample_varied_background(pseudo_data, rng_bkg)
                 self.bkg_penalty_stats['n_pseudo'] += 1
                 self.pseudo_bkg_varied_scaled.append(Bv_ev * self.c / self.T)
             self.pseudo_data_sets.append(pseudo_data)
@@ -866,9 +848,11 @@ class NeutrinoAnalysis:
 
         When on, every pseudo-experiment also draws a "measured" background
         B_varied_i = f_i · O_i^MC with f_i ~ Beta(α_i, β_i) (so 0 < B_varied <
-        O^MC and the signal can never go negative), and the fit χ² gains the
-        penalty Σ (B_fit − B_varied)²/B_varied with B_fit profiled out
-        analytically. Default off reproduces the previous behaviour exactly.
+        O^MC and the signal can never go negative), and the fit subtracts that
+        B_varied in place of the nominal background, i.e. χ² = T·Σ (O −
+        B_varied − M·x)²/O. The background is held fixed within each fit (not a
+        free nuisance); only its variation across pseudo-experiments enters.
+        Default off reproduces the previous behaviour exactly.
         """
         self.bkg_penalty = bool(on)
         self._baseline_result = None
@@ -880,34 +864,34 @@ class NeutrinoAnalysis:
             'n_pseudo': 0,            # pseudo-experiments sampled
             'neg_O_resampled': 0,     # bin draws redone because O^MC ≤ 0
             'neg_O_clipped': 0,       # bins clipped to the expectation after 100 tries
-            'mu_clipped': 0,          # μ = B/O ≥ 1 clipped to 1 − 1e−6
-            'sigma2_clipped': 0,      # σ² ≥ μ(1−μ) clipped to 0.99·μ(1−μ)
+            'neg_bkg_clipped': 0,     # B_varied < 0 draws clipped to 0
             'zero_bkg_bins': 0,       # bin draws skipped because B < threshold
         }
         self.bkg_sampling_records = []
 
     def _sample_varied_background(self, O_events, rng):
         """
-        Draw the "measured" background for one pseudo-experiment (§3 of the
-        spec). Per bin: μ = B/O^MC, σ² = B/(O^MC)² (Poisson Var(B) = B
-        normalised by O^MC), converted to Beta(α, β) shape parameters via
-        ν = μ(1−μ)/σ² − 1, α = μν, β = (1−μ)ν; then B_varied = f·O^MC with
-        f ~ Beta(α, β), which guarantees 0 < B_varied < O^MC.
+        Draw the "measured" background for one pseudo-experiment by fluctuating
+        each nominal background independently with a Gaussian of Poisson width,
+
+            B_varied_i ~ Normal(B_i, sqrt(B_i))   (event counts),
+
+        with B_i = T·Bkg_i/c. Unlike the earlier beta scheme this does *not*
+        reference the pseudo-data event count O_i — the background varies on
+        its own. Var(B_varied) = B_i matches the beta scheme's effective
+        variance, but there is no 0 < B_varied < O coupling.
 
         Edge cases (counted in ``bkg_penalty_stats``):
-        - μ ≥ 1 (O^MC fluctuated below B): clip μ to 1 − 1e−6.
-        - σ² ≥ μ(1−μ) (beta-validity violated, ≈ B > O^MC − 1): clip σ² to
-          0.99·μ(1−μ).
-        - B < ``bkg_zero_threshold`` events: degenerate α → 0; the bin is
-          excluded from the penalty (B_varied = 0, which reduces that bin to
-          the ordinary χ² term).
+        - B_varied < 0 (unphysical): clipped to 0.
+        - B_i < ``bkg_zero_threshold`` events: the bin carries no background
+          and is left at B_varied = 0 (reduces to the no-background χ² term).
 
-        Returns ``(B_varied, f)`` in event counts.
+        ``O_events`` is accepted for signature compatibility but unused.
+        Returns ``(B_varied, ratio)`` in event counts, ratio = B_varied / B_i.
         """
-        eps_mu = 1e-6
         B_ev = self.T * self.Bkg_vector / self.c
         nbin = len(B_ev)
-        f = np.zeros(nbin)
+        ratio = np.zeros(nbin)
         Bv = np.zeros(nbin)
         mu_t = np.zeros(nbin)
         s2_t = np.zeros(nbin)
@@ -915,40 +899,32 @@ class NeutrinoAnalysis:
 
         zero = B_ev < self.bkg_zero_threshold
         stats['zero_bkg_bins'] += int(zero.sum())
-        act = ~zero & (O_events > 0)
+        act = ~zero
         if act.any():
-            O = O_events[act]
             B = B_ev[act]
-            mu = B / O
-            clip = mu >= 1.0 - eps_mu
-            stats['mu_clipped'] += int(clip.sum())
-            mu = np.where(clip, 1.0 - eps_mu, mu)
-            s2 = B / O ** 2
-            cap = mu * (1.0 - mu)
-            viol = s2 >= cap
-            stats['sigma2_clipped'] += int(viol.sum())
-            s2 = np.where(viol, 0.99 * cap, s2)
-            nu = mu * (1.0 - mu) / s2 - 1.0
-            alpha = mu * nu
-            beta = (1.0 - mu) * nu
-            fs = rng.beta(alpha, beta)
-            f[act] = fs
-            Bv[act] = fs * O
-            mu_t[act] = mu
-            s2_t[act] = s2
+            draw = rng.normal(B, np.sqrt(B))
+            neg = draw < 0
+            stats['neg_bkg_clipped'] += int(neg.sum())
+            draw = np.where(neg, 0.0, draw)
+            Bv[act] = draw
+            ratio[act] = draw / B
+            # Stored in ratio space so the standardised residual below reads
+            # (B_varied/B − 1)/sqrt(1/B) = (B_varied − B)/sqrt(B) ~ N(0, 1).
+            mu_t[act] = 1.0
+            s2_t[act] = 1.0 / B
 
         if len(self.bkg_sampling_records) < self._max_sampling_records:
             self.bkg_sampling_records.append(
-                {'mu': mu_t, 'sigma2': s2_t, 'f': f, 'active': act,
+                {'mu': mu_t, 'sigma2': s2_t, 'f': ratio, 'active': act,
                  'B_varied': Bv, 'O_mc': np.array(O_events)})
-        return Bv, f
+        return Bv, ratio
 
     def plot_bkg_sampling_check(self, save=True, fname=None):
         """
-        Sanity check of the beta sampling (§3.1): pooled over the stored
-        records, the standardised residuals (f − μ)/σ should have mean ≈ 0 and
-        std ≈ 1, and the f histogram should live in (0, 1). Also prints the
-        edge-case counters. Returns a small summary dict.
+        Sanity check of the Gaussian sampling: pooled over the stored records,
+        the standardised residuals (B_varied − B)/sqrt(B) should have mean ≈ 0
+        and std ≈ 1, and the ratio B_varied/B should centre on 1. Also prints
+        the edge-case counters. Returns a small summary dict.
         """
         recs = self.bkg_sampling_records
         if not recs:
@@ -965,8 +941,8 @@ class NeutrinoAnalysis:
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
         axes[0].hist(f, bins=50)
-        axes[0].set_xlabel(r'$f = B_\mathrm{varied}/O^\mathrm{MC}$')
-        axes[0].set_title(f'ratio samples (n={len(f)})')
+        axes[0].set_xlabel(r'$B_\mathrm{varied}/B_i$')
+        axes[0].set_title(f'ratio samples (n={len(f)}, mean$\\approx$1)')
         axes[1].hist(z, bins=50)
         axes[1].set_xlabel(r'$(f - \mu)/\sigma$')
         axes[1].set_title(f'standardised: mean={z.mean():.3f}, std={z.std():.3f}')
