@@ -1,0 +1,674 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 13.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     25525,        666]
+NotebookOptionsPosition[     23922,        638]
+NotebookOutlinePosition[     24342,        655]
+CellTagsIndexPosition[     24299,        652]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Functions", " ", "for", " ", "expected", " ", "rate"}], " ", 
+  "*)"}]], "Input",
+ CellChangeTimes->{{3.9397896154046025`*^9, 3.9397896422090597`*^9}},
+ CellLabel->
+  "In[295]:=",ExpressionUUID->"2019afff-9579-4ef2-8d8b-94bd1de675c8"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"From", " ", "curly", " ", "R"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.94029390829692*^9, 3.9402939168588305`*^9}},
+ CellLabel->
+  "In[296]:=",ExpressionUUID->"2f69e81b-abf4-4625-aa73-930c96de1ac5"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Use", " ", "Integrated", " ", "Flux"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.939791032605275*^9, 3.9397910482880077`*^9}},
+ CellLabel->
+  "In[297]:=",ExpressionUUID->"6d7dd551-e9db-47f9-81fd-2dae36cc41c3"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"ExprateNoG", "[", 
+   RowBox[{"ER_", ",", "emax_", ",", "intf_"}], "]"}], ":=", 
+  RowBox[{"Module", "[", 
+   RowBox[{
+    RowBox[{"{", "emin", "}"}], ",", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"emin", "=", 
+      RowBox[{
+       RowBox[{"(", 
+        RowBox[{"ER", "+", 
+         RowBox[{"Sqrt", "[", 
+          RowBox[{"ER", "*", 
+           RowBox[{"(", 
+            RowBox[{"ER", "+", 
+             RowBox[{"2", "*", "Mn"}]}], ")"}]}], "]"}]}], ")"}], "/", 
+       "2"}]}], ";", "\[IndentingNewLine]", 
+     RowBox[{"NIntegrate", "[", 
+      RowBox[{
+       RowBox[{"NT", "*", 
+        RowBox[{
+         RowBox[{"DvdiffCross", "[", "Mn", "]"}], "[", 
+         RowBox[{"ER", ",", "Ev"}], "]"}], "*", 
+        RowBox[{"intf", "[", "Ev", "]"}]}], ",", 
+       RowBox[{"{", 
+        RowBox[{"Ev", ",", "emin", ",", "emax"}], "}"}]}], "]"}]}]}], 
+   "]"}]}]], "Input",
+ CellChangeTimes->{
+  3.9393387906097865`*^9, {3.939338908040304*^9, 3.9393389208835278`*^9}, {
+   3.9393399912373857`*^9, 3.939340003822793*^9}, 3.939789767486006*^9, {
+   3.939790994726311*^9, 3.9397910015834208`*^9}, {3.940294898328104*^9, 
+   3.940294899853086*^9}, 3.9403010613179092`*^9},
+ CellLabel->
+  "In[298]:=",ExpressionUUID->"b88fe297-9b35-4639-9a1e-279f2b9bfd1d"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Curly", " ", "R", " ", "for", " ", "1", " ", "interval"}], " ", 
+  "*)"}]], "Input",
+ CellChangeTimes->{{3.940296765204607*^9, 3.9402967812990828`*^9}},
+ CellLabel->
+  "In[299]:=",ExpressionUUID->"c60d600e-29eb-4d7e-9618-e7ebc7c12f65"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"CurlRbox", "[", 
+   RowBox[{"Ev_", ",", "e1_", ",", "e2_", ",", "sig_"}], "]"}], ":=", 
+  RowBox[{"Module", "[", 
+   RowBox[{
+    RowBox[{"{", "ERmax", "}"}], ",", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"ERmax", "=", 
+      FractionBox[
+       RowBox[{"2", 
+        RowBox[{"Ev", "^", "2"}]}], 
+       RowBox[{"Mn", "+", 
+        RowBox[{"2", "Ev"}]}]]}], " ", ";", "\[IndentingNewLine]", 
+     RowBox[{"NIntegrate", "[", 
+      RowBox[{
+       RowBox[{"NT", "*", 
+        RowBox[{
+         RowBox[{"DvdiffCross", "[", "Mn", "]"}], "[", 
+         RowBox[{"ER", ",", "Ev"}], "]"}], "*", 
+        RowBox[{"IntGboxmu", "[", 
+         RowBox[{"ER", ",", "e1", ",", "e2", ",", "sig"}], "]"}]}], ",", 
+       RowBox[{"{", 
+        RowBox[{"ER", ",", 
+         RowBox[{
+          SuperscriptBox["10", 
+           RowBox[{"-", "4"}]], " ", "eV"}], ",", "ERmax"}], "}"}]}], 
+      "]"}]}]}], "\[IndentingNewLine]", "]"}]}]], "Input",
+ CellChangeTimes->{{3.9402963448265705`*^9, 3.940296359918513*^9}, {
+  3.9402964006116548`*^9, 3.940296401644092*^9}, {3.940296482632854*^9, 
+  3.9402964896754546`*^9}, {3.940297383857809*^9, 3.940297385598364*^9}},
+ CellLabel->
+  "In[300]:=",ExpressionUUID->"f1e03388-157a-4d4f-b29e-4717d296586d"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"CurlR", "[", 
+   RowBox[{"Ev_", ",", "e1_", ",", "e2_", ",", "sig_"}], "]"}], ":=", 
+  RowBox[{"Module", "[", 
+   RowBox[{
+    RowBox[{"{", "ERmax", "}"}], ",", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"ERmax", "=", 
+      FractionBox[
+       RowBox[{"2", 
+        RowBox[{"Ev", "^", "2"}]}], 
+       RowBox[{"Mn", "+", 
+        RowBox[{"2", "Ev"}]}]]}], " ", ";", "\[IndentingNewLine]", 
+     RowBox[{"If", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"Max", "[", 
+         RowBox[{
+          RowBox[{"1", " ", "eV"}], ",", "e1"}], "]"}], "<", 
+        RowBox[{"Min", "[", 
+         RowBox[{"e2", ",", "ERmax"}], "]"}]}], ",", "\[IndentingNewLine]", 
+       RowBox[{"NIntegrate", "[", 
+        RowBox[{
+         RowBox[{"NT", "*", 
+          RowBox[{
+           RowBox[{"DvdiffCross", "[", "Mn", "]"}], "[", 
+           RowBox[{"ER", ",", "Ev"}], "]"}]}], ",", 
+         RowBox[{"{", 
+          RowBox[{"ER", ",", 
+           RowBox[{"Max", "[", 
+            RowBox[{
+             RowBox[{"1", " ", "eV"}], ",", "e1"}], "]"}], ",", 
+           RowBox[{"Min", "[", 
+            RowBox[{"e2", ",", "ERmax"}], "]"}]}], "}"}]}], "]"}], ",", " ", 
+       "0"}], "]"}]}]}], "\[IndentingNewLine]", "]"}]}]], "Input",
+ CellChangeTimes->{{3.953328795281348*^9, 3.9533288385746326`*^9}, 
+   3.953329642621524*^9, {3.9533297562835493`*^9, 
+   3.953329806112545*^9}},ExpressionUUID->"1bd3f0a8-409d-455a-9147-\
+4ee3911bcd0c"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Curly", " ", "R", " ", "generate"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9402974397086816`*^9, 3.940297449856736*^9}},
+ CellLabel->
+  "In[301]:=",ExpressionUUID->"ca9596d0-ba6c-4e08-a607-daa6e50eb400"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", 
+   RowBox[{
+    RowBox[{"CRloopBox", "[", 
+     RowBox[{"Ev1_", ",", "Ev2_", ",", "dEv_", ",", "sigER_"}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"tabe", ",", "tabR", ",", "cR", ",", "Funclist"}], "}"}], ",", 
+      "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"Funclist", "=", 
+        RowBox[{"{", "}"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"For", "[", 
+        RowBox[{
+         RowBox[{"j", "=", "1"}], ",", 
+         RowBox[{"j", "<=", 
+          RowBox[{
+           RowBox[{"Length", "[", "datERbin", "]"}], "-", "1"}]}], ",", 
+         RowBox[{"j", "++"}], ",", "\[IndentingNewLine]", 
+         RowBox[{
+          RowBox[{"tabR", "=", 
+           RowBox[{"Table", "[", 
+            RowBox[{
+             RowBox[{"CurlRbox", "[", 
+              RowBox[{"Ev", ",", 
+               RowBox[{
+                RowBox[{"datERbin", "[", 
+                 RowBox[{"[", "j", "]"}], "]"}], "*", "eV"}], ",", 
+               RowBox[{
+                RowBox[{"datERbin", "[", 
+                 RowBox[{"[", 
+                  RowBox[{"j", "+", "1"}], "]"}], "]"}], "*", "eV"}], ",", 
+               "sigER"}], "]"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"Ev", ",", "Ev1", ",", "Ev2", ",", "dEv"}], "}"}]}], 
+            "]"}]}], ";", "\[IndentingNewLine]", 
+          RowBox[{"tabe", "=", 
+           RowBox[{"Table", "[", 
+            RowBox[{"Ev", ",", 
+             RowBox[{"{", 
+              RowBox[{"Ev", ",", "Ev1", ",", "Ev2", ",", "dEv"}], "}"}]}], 
+            "]"}]}], ";", "\[IndentingNewLine]", 
+          RowBox[{"cR", "=", 
+           RowBox[{"LIntpl1D", "[", 
+            RowBox[{"tabe", ",", "tabR"}], "]"}]}], ";", 
+          "\[IndentingNewLine]", 
+          RowBox[{"AppendTo", "[", 
+           RowBox[{"Funclist", ",", "cR"}], "]"}], ";"}]}], 
+        "\[IndentingNewLine]", "]"}], ";", "\[IndentingNewLine]", 
+       "Funclist"}]}], "\[IndentingNewLine]", "]"}]}], "*)"}], 
+  "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"CRloopBox", "[", 
+    RowBox[{"ev1_", ",", "ev2_", ",", "dev_", ",", "sigER_"}], "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+      "tabe", ",", "tabR", ",", "funclist", ",", "evList", ",", "datERpair"}],
+       "}"}], ",", 
+     RowBox[{
+      RowBox[{"evList", "=", 
+       RowBox[{"Range", "[", 
+        RowBox[{"ev1", ",", "ev2", ",", "dev"}], "]"}]}], ";", 
+      RowBox[{"(*", 
+       RowBox[{
+       "Generate", " ", "Ev", " ", "list", " ", "once", " ", "for", " ", 
+        "reuse"}], "*)"}], 
+      RowBox[{"datERpair", "=", 
+       RowBox[{"Partition", "[", 
+        RowBox[{"datERbin", ",", "2", ",", "1"}], "]"}]}], ";", 
+      RowBox[{"(*", 
+       RowBox[{
+       "Create", " ", "adjacent", " ", "pairs", " ", "from", " ", 
+        "datERbin"}], "*)"}], 
+      RowBox[{"funclist", "=", 
+       RowBox[{"Table", "[", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"tabR", "=", 
+           RowBox[{"ParallelTable", "[", 
+            RowBox[{
+             RowBox[{"CurlRbox", "[", 
+              RowBox[{"ev", ",", 
+               RowBox[{
+                RowBox[{"datERpair", "[", 
+                 RowBox[{"[", 
+                  RowBox[{"j", ",", "1"}], "]"}], "]"}], "*", "eV"}], ",", 
+               RowBox[{
+                RowBox[{"datERpair", "[", 
+                 RowBox[{"[", 
+                  RowBox[{"j", ",", "2"}], "]"}], "]"}], "*", "eV"}], ",", 
+               "sigER"}], "]"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"ev", ",", "evList"}], "}"}]}], "]"}]}], ";", 
+          "\[IndentingNewLine]", 
+          RowBox[{"tabe", "=", "evList"}], ";", 
+          RowBox[{"(*", 
+           RowBox[{
+           "Use", " ", "the", " ", "precomputed", " ", "Ev", " ", "list"}], 
+           "*)"}], 
+          RowBox[{"LIntpl1D", "[", 
+           RowBox[{"tabe", ",", "tabR"}], "]"}]}], ",", 
+         RowBox[{"{", 
+          RowBox[{"j", ",", 
+           RowBox[{"Length", "[", "datERpair", "]"}]}], "}"}]}], "]"}]}], ";",
+       "\[IndentingNewLine]", "funclist"}]}], "]"}]}]}]], "Input",
+ CellChangeTimes->{{3.940298270750334*^9, 3.940298292043129*^9}, {
+   3.940298438557291*^9, 3.9402984517543764`*^9}, {3.940298482022521*^9, 
+   3.940298513609062*^9}, {3.9402985483257613`*^9, 3.9402985968702087`*^9}, {
+   3.9403073522314415`*^9, 3.9403073536417193`*^9}, {3.940544449714407*^9, 
+   3.940544459542787*^9}, {3.940544693470605*^9, 3.9405447019449053`*^9}, 
+   3.940544848947373*^9, {3.940545051602063*^9, 3.940545053019701*^9}, {
+   3.940545367743462*^9, 
+   3.9405453680654373`*^9}},ExpressionUUID->"4d29d1b7-b6a9-471a-8e47-\
+ebd5eb820602"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"CRloop", "[", 
+   RowBox[{"ev1_", ",", "ev2_", ",", "dev_", ",", "sigER_"}], "]"}], ":=", 
+  RowBox[{"Module", "[", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{
+     "tabe", ",", "tabR", ",", "funclist", ",", "evList", ",", "datERpair"}], 
+     "}"}], ",", 
+    RowBox[{
+     RowBox[{"evList", "=", 
+      RowBox[{"Range", "[", 
+       RowBox[{"ev1", ",", "ev2", ",", "dev"}], "]"}]}], ";", 
+     RowBox[{"(*", 
+      RowBox[{
+      "Generate", " ", "Ev", " ", "list", " ", "once", " ", "for", " ", 
+       "reuse"}], "*)"}], 
+     RowBox[{"datERpair", "=", 
+      RowBox[{"Partition", "[", 
+       RowBox[{"datERbin", ",", "2", ",", "1"}], "]"}]}], ";", 
+     RowBox[{"(*", 
+      RowBox[{
+      "Create", " ", "adjacent", " ", "pairs", " ", "from", " ", "datERbin"}],
+       "*)"}], 
+     RowBox[{"funclist", "=", 
+      RowBox[{"Table", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"tabR", "=", 
+          RowBox[{"ParallelTable", "[", 
+           RowBox[{
+            RowBox[{"CurlR", "[", 
+             RowBox[{"ev", ",", 
+              RowBox[{
+               RowBox[{"datERpair", "[", 
+                RowBox[{"[", 
+                 RowBox[{"j", ",", "1"}], "]"}], "]"}], "*", "eV"}], ",", 
+              RowBox[{
+               RowBox[{"datERpair", "[", 
+                RowBox[{"[", 
+                 RowBox[{"j", ",", "2"}], "]"}], "]"}], "*", "eV"}], ",", 
+              "sigER"}], "]"}], ",", 
+            RowBox[{"{", 
+             RowBox[{"ev", ",", "evList"}], "}"}]}], "]"}]}], ";", 
+         "\[IndentingNewLine]", 
+         RowBox[{"tabe", "=", "evList"}], ";", 
+         RowBox[{"(*", 
+          RowBox[{
+          "Use", " ", "the", " ", "precomputed", " ", "Ev", " ", "list"}], 
+          "*)"}], 
+         RowBox[{"LIntpl1D", "[", 
+          RowBox[{"tabe", ",", "tabR"}], "]"}]}], ",", 
+        RowBox[{"{", 
+         RowBox[{"j", ",", 
+          RowBox[{"Length", "[", "datERpair", "]"}]}], "}"}]}], "]"}]}], ";", 
+     "\[IndentingNewLine]", "funclist"}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.953328851961439*^9, 3.953328852869503*^9}, {
+  3.953328886017372*^9, 3.953328886339451*^9}},
+ CellLabel->
+  "In[1104]:=",ExpressionUUID->"ac5c7e45-d993-4736-b479-1b20ad9e327d"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", 
+   RowBox[{
+    RowBox[{"CRloopBoxData", "[", 
+     RowBox[{"Ev1_", ",", "Ev2_", ",", "dEv_", ",", "sigER_"}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"tabe", ",", "tabR", ",", "cR", ",", "datlist"}], "}"}], ",", 
+      "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"datlist", "=", 
+        RowBox[{"{", "}"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"For", "[", 
+        RowBox[{
+         RowBox[{"j", "=", "1"}], ",", 
+         RowBox[{"j", "<=", 
+          RowBox[{
+           RowBox[{"Length", "[", "datERbin", "]"}], "-", "1"}]}], ",", 
+         RowBox[{"j", "++"}], ",", "\[IndentingNewLine]", 
+         RowBox[{
+          RowBox[{"tabR", "=", 
+           RowBox[{"Table", "[", 
+            RowBox[{
+             RowBox[{"CurlRbox", "[", 
+              RowBox[{"Ev", ",", 
+               RowBox[{
+                RowBox[{"datERbin", "[", 
+                 RowBox[{"[", "j", "]"}], "]"}], "*", "eV"}], ",", 
+               RowBox[{
+                RowBox[{"datERbin", "[", 
+                 RowBox[{"[", 
+                  RowBox[{"j", "+", "1"}], "]"}], "]"}], "*", "eV"}], ",", 
+               "sigER"}], "]"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"Ev", ",", "Ev1", ",", "Ev2", ",", "dEv"}], "}"}]}], 
+            "]"}]}], ";", "\[IndentingNewLine]", 
+          RowBox[{"AppendTo", "[", 
+           RowBox[{"datlist", ",", "tabR"}], "]"}], ";"}]}], 
+        "\[IndentingNewLine]", "]"}], ";", "\[IndentingNewLine]", 
+       "datlist"}]}], "\[IndentingNewLine]", "]"}]}], "*)"}], 
+  "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"CRloopBoxData", "[", 
+     RowBox[{"ev1_", ",", "ev2_", ",", "dev_", ",", "sigER_"}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"datlist", ",", "evList", ",", "datERpairs"}], "}"}], ",", 
+      RowBox[{"(*", 
+       RowBox[{
+       "Prepare", " ", "Ev", " ", "list", " ", "and", " ", "adjacent", " ", 
+        "pairs", " ", "of", " ", "datERbin", " ", "in", " ", "advance"}], 
+       "*)"}], 
+      RowBox[{
+       RowBox[{"evList", "=", 
+        RowBox[{"Range", "[", 
+         RowBox[{"ev1", ",", "ev2", ",", "dev"}], "]"}]}], ";", 
+       "\[IndentingNewLine]", 
+       RowBox[{"datERpairs", "=", 
+        RowBox[{
+         RowBox[{"Transpose", "[", 
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"Most", "[", "datERbin", "]"}], ",", 
+            RowBox[{"Rest", "[", "datERbin", "]"}]}], "}"}], "]"}], "*", 
+         "eV"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"(*", 
+        RowBox[{
+        "Compute", " ", "each", " ", "pair", " ", "in", " ", "parallel"}], 
+        "*)"}], 
+       RowBox[{"datlist", "=", 
+        RowBox[{"ParallelTable", "[", 
+         RowBox[{
+          RowBox[{"Table", "[", 
+           RowBox[{
+            RowBox[{"CurlRbox", "[", 
+             RowBox[{"ev", ",", 
+              RowBox[{"datERpair", "[", 
+               RowBox[{"[", "1", "]"}], "]"}], ",", 
+              RowBox[{"datERpair", "[", 
+               RowBox[{"[", "2", "]"}], "]"}], ",", "sigER"}], "]"}], ",", 
+            RowBox[{"{", 
+             RowBox[{"ev", ",", "evList"}], "}"}]}], "]"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"datERpair", ",", "datERpairs"}], "}"}]}], "]"}]}], ";", 
+       "\[IndentingNewLine]", "datlist"}]}], "]"}]}], "\n", 
+   RowBox[{
+    RowBox[{"CRloopData", "[", 
+     RowBox[{"ev1_", ",", "ev2_", ",", "dev_", ",", "sigER_"}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"datlist", ",", "evList", ",", "datERpairs"}], "}"}], ",", 
+      RowBox[{"(*", 
+       RowBox[{
+       "Prepare", " ", "Ev", " ", "list", " ", "and", " ", "adjacent", " ", 
+        "pairs", " ", "of", " ", "datERbin", " ", "in", " ", "advance"}], 
+       "*)"}], 
+      RowBox[{
+       RowBox[{"evList", "=", 
+        RowBox[{"Range", "[", 
+         RowBox[{"ev1", ",", "ev2", ",", "dev"}], "]"}]}], ";", 
+       "\[IndentingNewLine]", 
+       RowBox[{"datERpairs", "=", 
+        RowBox[{
+         RowBox[{"Transpose", "[", 
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"Most", "[", "datERbin", "]"}], ",", 
+            RowBox[{"Rest", "[", "datERbin", "]"}]}], "}"}], "]"}], "*", 
+         "eV"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"(*", 
+        RowBox[{
+        "Compute", " ", "each", " ", "pair", " ", "in", " ", "parallel"}], 
+        "*)"}], 
+       RowBox[{"datlist", "=", 
+        RowBox[{"ParallelTable", "[", 
+         RowBox[{
+          RowBox[{"Table", "[", 
+           RowBox[{
+            RowBox[{"CurlR", "[", 
+             RowBox[{"ev", ",", 
+              RowBox[{"datERpair", "[", 
+               RowBox[{"[", "1", "]"}], "]"}], ",", 
+              RowBox[{"datERpair", "[", 
+               RowBox[{"[", "2", "]"}], "]"}], ",", "sigER"}], "]"}], ",", 
+            RowBox[{"{", 
+             RowBox[{"ev", ",", "evList"}], "}"}]}], "]"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"datERpair", ",", "datERpairs"}], "}"}]}], "]"}]}], ";", 
+       "\[IndentingNewLine]", "datlist"}]}], "]"}]}]}]}]], "Input",
+ CellChangeTimes->{{3.9403073091309166`*^9, 3.940307328837113*^9}, {
+  3.9403073602227235`*^9, 3.94030739587062*^9}, {3.940544831485085*^9, 
+  3.940544831584132*^9}, {3.940544901570364*^9, 3.940544916866756*^9}, {
+  3.940545011740178*^9, 3.9405450128799353`*^9}, {3.953328865880232*^9, 
+  3.953328876983656*^9}},ExpressionUUID->"c90495f3-a867-4e26-8d14-\
+47ff5f8372c6"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"SampleInt", "[", "f_", "]"}], "[", 
+   RowBox[{"Ev1_", ",", "dEv_", ",", "n_"}], "]"}], ":=", 
+  RowBox[{"Table", "[", 
+   RowBox[{
+    RowBox[{"NIntegrate", "[", 
+     RowBox[{
+      RowBox[{"f", "[", "Ev", " ", "]"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"Ev", ",", 
+        RowBox[{"Ev1", "+", 
+         RowBox[{"m", "*", "dEv"}]}], ",", 
+        RowBox[{"Ev1", "+", "dEv", "+", 
+         RowBox[{"m", "*", "dEv"}]}]}], "}"}]}], "]"}], ",", 
+    RowBox[{"{", 
+     RowBox[{"m", ",", "0", ",", 
+      RowBox[{"n", "-", "1"}], ",", "1"}], "}"}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940308575730867*^9, 3.9403086061388416`*^9}, {
+  3.940308637826028*^9, 3.940308707773007*^9}, {3.9403092757010465`*^9, 
+  3.940309278265378*^9}},
+ CellLabel->
+  "In[304]:=",ExpressionUUID->"7003755e-f2a7-4153-8114-d990ef516530"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", 
+   RowBox[{"\:53ef\:5909\:5e45\:30d3\:30f3\:3067\:306e\:7a4d\:5206", "\:ff1a", 
+    RowBox[{"edges", " ", "\:306f\:5358\:8abf\:5897\:52a0"}], "\:3001", 
+    RowBox[{"\:9577\:3055\:306f", " ", 
+     RowBox[{"(", 
+      RowBox[{"#bins", "+", "1"}], ")"}]}]}], "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"Clear", "[", "SampleIntByEdges", "]"}], "\n", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"SampleIntByEdges", "[", "f_", "]"}], "[", 
+     RowBox[{"edges_List", "?", "VectorQ"}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"e", "=", "edges"}], "}"}], ",", 
+      RowBox[{
+       RowBox[{"If", "[", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"Length", "[", "e", "]"}], "<", "2"}], ",", 
+         RowBox[{"Return", "[", 
+          RowBox[{"{", "}"}], "]"}]}], "]"}], ";", "\[IndentingNewLine]", 
+       RowBox[{"If", "[", 
+        RowBox[{
+         RowBox[{"!", 
+          RowBox[{"StrictlyIncreasingQ", "[", "e", "]"}]}], ",", 
+         RowBox[{
+          RowBox[{"Message", "[", 
+           RowBox[{
+            RowBox[{"SampleIntByEdges", "::", "edges"}], 
+            ",", "\"\<edges must be strictly increasing\>\""}], "]"}], ";", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Return", "[", "$Failed", "]"}]}]}], "]"}], ";", 
+       "\[IndentingNewLine]", 
+       RowBox[{"Table", "[", 
+        RowBox[{
+         RowBox[{"NIntegrate", "[", 
+          RowBox[{
+           RowBox[{"f", "[", "Ev", "]"}], ",", 
+           RowBox[{"{", 
+            RowBox[{"Ev", ",", 
+             RowBox[{"e", "[", 
+              RowBox[{"[", "i", "]"}], "]"}], ",", 
+             RowBox[{"e", "[", 
+              RowBox[{"[", 
+               RowBox[{"i", "+", "1"}], "]"}], "]"}]}], "}"}]}], "]"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"i", ",", "1", ",", 
+           RowBox[{
+            RowBox[{"Length", "[", "e", "]"}], "-", "1"}]}], "}"}]}], 
+        "]"}]}]}], "]"}]}], "\n", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"SampleIntByEdges", "::", "edges"}], "=", "\"\<`1`\>\""}], ";"}],
+    "\n", 
+   RowBox[{"(*", 
+    RowBox[{
+     RowBox[{
+     "\:533a\:9593\:3054\:3068\:306e\:70b9\:6570\:3067\:30a8\:30c3\:30b8\:5217\
+", 
+      RowBox[{"(", "\:5883\:754c", ")"}], "\:3092\:4f5c\:308b"}], "\:ff1a", 
+     "\:7aef\:70b9\:3092\:91cd\:8907\:3055\:305b\:306a\:3044"}], "*)"}], 
+   RowBox[{"Clear", "[", "makeEvEdgesByCount", "]"}], "\n", 
+   RowBox[{
+    RowBox[{"makeEvEdgesByCount", "[", 
+     RowBox[{"ev1_", ",", "ev2_", ",", 
+      RowBox[{"nLow_Integer", "?", "Positive"}], ",", 
+      RowBox[{"nHigh_Integer", "?", "Positive"}], ",", 
+      RowBox[{"threshold_", ":", "2"}]}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"lowEdges", ",", "highEdges"}], "}"}], ",", 
+      RowBox[{"Which", "[", 
+       RowBox[{
+        RowBox[{"ev2", "<=", "threshold"}], ",", 
+        RowBox[{"Subdivide", "[", 
+         RowBox[{"ev1", ",", "ev2", ",", 
+          RowBox[{"Max", "[", 
+           RowBox[{
+            RowBox[{"nLow", "-", "1"}], ",", "1"}], "]"}]}], "]"}], ",", 
+        RowBox[{"ev1", ">=", "threshold"}], ",", 
+        RowBox[{"Subdivide", "[", 
+         RowBox[{"ev1", ",", "ev2", ",", 
+          RowBox[{"Max", "[", 
+           RowBox[{
+            RowBox[{"nHigh", "-", "1"}], ",", "1"}], "]"}]}], "]"}], ",", 
+        "True", ",", 
+        RowBox[{
+         RowBox[{"lowEdges", "=", 
+          RowBox[{"Subdivide", "[", 
+           RowBox[{"ev1", ",", "threshold", ",", 
+            RowBox[{"Max", "[", 
+             RowBox[{
+              RowBox[{"nLow", "-", "1"}], ",", "1"}], "]"}]}], "]"}]}], ";", 
+         "\[IndentingNewLine]", 
+         RowBox[{"highEdges", "=", 
+          RowBox[{"Subdivide", "[", 
+           RowBox[{"threshold", ",", "ev2", ",", 
+            RowBox[{"Max", "[", 
+             RowBox[{
+              RowBox[{"nHigh", "-", "1"}], ",", "1"}], "]"}]}], "]"}]}], ";", 
+         "\[IndentingNewLine]", 
+         RowBox[{"Join", "[", 
+          RowBox[{"lowEdges", ",", 
+           RowBox[{"Rest", "[", "highEdges", "]"}]}], "]"}]}]}], " ", 
+       RowBox[{"(*", 
+        RowBox[{
+        "threshold", " ", "\:3092\:91cd\:8907\:3055\:305b\:306a\:3044"}], 
+        "*)"}], "]"}]}], "]"}]}]}]}]], "Input",
+ CellChangeTimes->{{3.964227213583026*^9, 
+  3.964227250751296*^9}},ExpressionUUID->"f7bdf284-4e23-41d8-b37c-\
+1fb10321083e"],
+
+Cell[BoxData[
+ RowBox[{"NotebookClose", "[", "]"}]], "Input",
+ CellChangeTimes->{{3.9403914696727877`*^9, 
+  3.940391496644985*^9}},ExpressionUUID->"ebba805b-7636-49a9-a11a-\
+eeaceed9eeec"]
+},
+WindowSize->{1710, 951},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+Magnification:>2. Inherited,
+FrontEndVersion->"14.3 for Mac OS X ARM (64-bit) (July 8, 2025)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"af8f2785-28b2-4b88-a3a4-de41454f28f3"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 280, 6, 58, "Input",ExpressionUUID->"2019afff-9579-4ef2-8d8b-94bd1de675c8"],
+Cell[841, 28, 251, 5, 58, "Input",ExpressionUUID->"2f69e81b-abf4-4625-aa73-930c96de1ac5"],
+Cell[1095, 35, 259, 5, 58, "Input",ExpressionUUID->"6d7dd551-e9db-47f9-81fd-2dae36cc41c3"],
+Cell[1357, 42, 1292, 34, 140, "Input",ExpressionUUID->"b88fe297-9b35-4639-9a1e-279f2b9bfd1d"],
+Cell[2652, 78, 281, 6, 58, "Input",ExpressionUUID->"c60d600e-29eb-4d7e-9618-e7ebc7c12f65"],
+Cell[2936, 86, 1269, 32, 244, "Input",ExpressionUUID->"f1e03388-157a-4d4f-b29e-4717d296586d"],
+Cell[4208, 120, 1465, 39, 281, "Input",ExpressionUUID->"1bd3f0a8-409d-455a-9147-4ee3911bcd0c"],
+Cell[5676, 161, 256, 5, 58, "Input",ExpressionUUID->"ca9596d0-ba6c-4e08-a607-daa6e50eb400"],
+Cell[5935, 168, 4699, 117, 834, "Input",ExpressionUUID->"4d29d1b7-b6a9-471a-8e47-ebd5eb820602"],
+Cell[10637, 287, 2246, 60, 426, "Input",ExpressionUUID->"ac5c7e45-d993-4736-b479-1b20ad9e327d"],
+Cell[12886, 349, 5543, 139, 998, "Input",ExpressionUUID->"c90495f3-a867-4e26-8d14-47ff5f8372c6"],
+Cell[18432, 490, 869, 23, 99, "Input",ExpressionUUID->"7003755e-f2a7-4153-8114-d990ef516530"],
+Cell[19304, 515, 4422, 115, 643, "Input",ExpressionUUID->"f7bdf284-4e23-41d8-b37c-1fb10321083e"],
+Cell[23729, 632, 189, 4, 58, "Input",ExpressionUUID->"ebba805b-7636-49a9-a11a-eeaceed9eeec"]
+}
+]
+*)
+

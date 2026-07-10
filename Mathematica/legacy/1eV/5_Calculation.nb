@@ -1,0 +1,828 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 13.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     31610,        820]
+NotebookOptionsPosition[     27405,        765]
+NotebookOutlinePosition[     27795,        781]
+CellTagsIndexPosition[     27752,        778]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.940129387301149*^9, 3.9401293927456503`*^9}},
+ CellLabel->
+  "In[146]:=",ExpressionUUID->"7b93c569-1224-4e4c-a120-9ec6d2ad3708"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Integrated", " ", "Phi"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.940129263564355*^9, 3.9401292732583885`*^9}},
+ CellLabel->
+  "In[147]:=",ExpressionUUID->"08ff334c-c30f-4cef-aaf0-87937f7571b1"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"datEvsolid", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Transpose", "[", "datdNdEsolid", "]"}], "[", 
+     RowBox[{"[", "1", "]"}], "]"}], "*", "MeV"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"datdPhisolid", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{"Transpose", "[", "datdNdEsolid", "]"}], "[", 
+      RowBox[{"[", "2", "]"}], "]"}], "/", "MeV"}], "*", 
+    RowBox[{"(", 
+     RowBox[{
+      FractionBox[
+       RowBox[{"2.65", " ", 
+        SuperscriptBox["10", "22"], 
+        RowBox[{"MeV", "/", "sec"}]}], 
+       RowBox[{"205.3", " ", "MeV"}]], " ", "*", 
+      FractionBox["1", 
+       RowBox[{"4", "Pi", " "}]], "*", 
+      RowBox[{"(", 
+       RowBox[{
+        FractionBox["1", 
+         RowBox[{
+          RowBox[{"(", 
+           RowBox[{"7200", " ", "cm"}], " ", ")"}], "^", "2"}]], "+", 
+        FractionBox["1", 
+         RowBox[{
+          RowBox[{"(", 
+           RowBox[{"10200", " ", "cm"}], " ", ")"}], "^", "2"}]]}], ")"}]}], 
+     ")"}]}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.940129249976721*^9, 3.9401293715586357`*^9}, {
+  3.9401296078204155`*^9, 3.9401297276903253`*^9}, {3.940129760839946*^9, 
+  3.940129793771266*^9}, {3.9401299754255238`*^9, 3.9401299761505656`*^9}, {
+  3.9401310001813836`*^9, 3.940131001417118*^9}},
+ CellLabel->
+  "In[148]:=",ExpressionUUID->"7ecc39cc-3209-4355-ab9e-cef9576b4286"],
+
+Cell[BoxData[
+ RowBox[{"dfluxsolid", "=", 
+  RowBox[{"dFlux", "[", 
+   RowBox[{"datEvsolid", ",", "datdPhisolid"}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940129838264488*^9, 3.9401298549042068`*^9}, {
+   3.940130454080449*^9, 3.9401304546657705`*^9}, 3.940294137644908*^9},
+ CellLabel->
+  "In[150]:=",ExpressionUUID->"b30420f9-3963-450b-a58d-bd7f508ce135"],
+
+Cell[BoxData["dfluxsolid"], "Input",
+ CellLabel->
+  "In[151]:=",ExpressionUUID->"35bc332a-5f40-4928-8070-881a20ced662"],
+
+Cell[BoxData[
+ RowBox[{"intfluxsolid", "=", 
+  RowBox[{
+   RowBox[{"IntFlux", "[", 
+    RowBox[{"datEvsolid", ",", "datdPhisolid"}], "]"}], "[", 
+   RowBox[{".001", " ", "MeV"}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940129903876995*^9, 3.940129918827155*^9}, {
+   3.9401304649720306`*^9, 3.940130465512009*^9}, 3.9402895842625895`*^9, 
+   3.940294144344782*^9},
+ CellLabel->
+  "In[152]:=",ExpressionUUID->"fa0f789d-c2c3-4984-834c-b58230c47ed3"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"datEvdash", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Transpose", "[", "datdNdEdash", "]"}], "[", 
+     RowBox[{"[", "1", "]"}], "]"}], "*", "MeV"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"datdPhidash", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{"Transpose", "[", "datdNdEdash", "]"}], "[", 
+      RowBox[{"[", "2", "]"}], "]"}], "/", "MeV"}], "*", 
+    RowBox[{"(", 
+     RowBox[{
+      FractionBox[
+       RowBox[{"2.65", " ", 
+        SuperscriptBox["10", "22"], 
+        RowBox[{"MeV", "/", "sec"}]}], 
+       RowBox[{"205.3", " ", "MeV"}]], " ", "*", 
+      FractionBox["1", 
+       RowBox[{"4", "Pi", " "}]], "*", 
+      RowBox[{"(", 
+       RowBox[{
+        FractionBox["1", 
+         RowBox[{
+          RowBox[{"(", 
+           RowBox[{"7200", " ", "cm"}], " ", ")"}], "^", "2"}]], "+", 
+        FractionBox["1", 
+         RowBox[{
+          RowBox[{"(", 
+           RowBox[{"10200", " ", "cm"}], " ", ")"}], "^", "2"}]]}], ")"}]}], 
+     ")"}]}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.9401299548410187`*^9, 3.940129981483656*^9}, {
+  3.9401310257737737`*^9, 3.94013102686827*^9}},
+ CellLabel->
+  "In[153]:=",ExpressionUUID->"ce014576-d5bd-49ab-95a2-7b04ab29ae61"],
+
+Cell[BoxData[
+ RowBox[{"dfluxdash", "=", 
+  RowBox[{"dFlux", "[", 
+   RowBox[{"datEvdash", ",", "datdPhidash"}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940129990859638*^9, 3.940129999573513*^9}, {
+   3.940130474084444*^9, 3.9401304747184477`*^9}, 3.940294149906896*^9},
+ CellLabel->
+  "In[155]:=",ExpressionUUID->"0e1efb1d-8885-4e40-9c7f-cb27e7924f8f"],
+
+Cell[BoxData[
+ RowBox[{"intfluxdash", "=", 
+  RowBox[{
+   RowBox[{"IntFlux", "[", 
+    RowBox[{"datEvdash", ",", "datdPhidash"}], "]"}], "[", 
+   RowBox[{".001", " ", "MeV"}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940130012950536*^9, 3.940130021266094*^9}, {
+   3.9401304790626764`*^9, 3.9401304797051196`*^9}, 3.940294154459874*^9},
+ CellLabel->
+  "In[156]:=",ExpressionUUID->"1d1877a2-439d-42fe-bfc4-10e39cf1b76a"],
+
+Cell[BoxData[
+ RowBox[{"Plot", "[", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"dfluxsolid", "[", 
+       RowBox[{"x", " ", "MeV"}], "]"}], "*", 
+      SuperscriptBox["cm", "2"], "*", "sec", "*", "MeV"}], ",", 
+     RowBox[{
+      RowBox[{"dfluxdash", "[", 
+       RowBox[{"x", " ", "MeV"}], "]"}], "*", 
+      SuperscriptBox["cm", "2"], "*", "sec", "*", "MeV"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"x", ",", "0.11", ",", "7"}], "}"}], ",", 
+   RowBox[{"ScalingFunctions", "->", 
+    RowBox[{"{", 
+     RowBox[{"\"\<Log\>\"", ",", "None"}], "}"}]}], ",", 
+   RowBox[{"PlotStyle", "->", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", "Black", "}"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"Black", ",", "Dashed"}], "}"}]}], "}"}]}], ",", 
+   RowBox[{"Frame", "->", "True"}], ",", 
+   RowBox[{"FrameLabel", "->", 
+    RowBox[{"{", 
+     RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(v\)]\)[MeV]\>\"", 
+      ",", "\"\<d\[Phi]/\!\(\*SubscriptBox[\(dE\), \
+\(v\)]\)[1/\!\(\*SuperscriptBox[\(cm\), \(2\)]\)/s/MeV]\>\""}], "}"}]}]}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.9401303540393763`*^9, 3.9401303840982094`*^9}, {
+  3.9401305069499397`*^9, 3.9401305180196466`*^9}, {3.940130561010118*^9, 
+  3.9401306926327624`*^9}, {3.9401308379865947`*^9, 3.9401308549774714`*^9}, {
+  3.940131084805672*^9, 3.9401312213846874`*^9}, {3.9402941650667305`*^9, 
+  3.9402941686179223`*^9}},
+ CellLabel->
+  "In[157]:=",ExpressionUUID->"218aad33-8d82-4e25-b71e-658e312c6b8a"],
+
+Cell[BoxData[
+ RowBox[{"Plot", "[", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"intfluxsolid", "[", 
+       RowBox[{"x", " ", "MeV"}], "]"}], "*", 
+      SuperscriptBox["cm", "2"], "*", "sec"}], ",", 
+     RowBox[{
+      RowBox[{"intfluxdash", "[", 
+       RowBox[{"x", " ", "MeV"}], "]"}], "*", 
+      SuperscriptBox["cm", "2"], "*", "sec"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"x", ",", "0.11", ",", "7"}], "}"}], ",", 
+   RowBox[{"ScalingFunctions", "->", 
+    RowBox[{"{", 
+     RowBox[{"\"\<Log\>\"", ",", "None"}], "}"}]}], ",", 
+   RowBox[{"PlotStyle", "->", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", "Black", "}"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"Black", ",", "Dashed"}], "}"}]}], "}"}]}], ",", 
+   RowBox[{"Frame", "->", "True"}], ",", 
+   RowBox[{"FrameLabel", "->", 
+    RowBox[{"{", 
+     RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(v\)]\)[MeV]\>\"", 
+      ",", "\"\<\[CapitalPhi][1/\!\(\*SuperscriptBox[\(cm\), \
+\(2\)]\)/s]\>\""}], "}"}]}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.94013126871003*^9, 3.9401312792968497`*^9}, {
+  3.9401313293483734`*^9, 3.9401313436852913`*^9}, {3.9402941739124155`*^9, 
+  3.940294175360854*^9}},
+ CellLabel->
+  "In[158]:=",ExpressionUUID->"afcfb12b-e52b-47f1-b7a2-560e5a117d9f"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Expected", " ", "rate"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.940133098272056*^9, 3.9401331104679203`*^9}},
+ CellLabel->
+  "In[159]:=",ExpressionUUID->"cfd5bf22-04fa-43ca-996a-b96b7d776c73"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"ERbin", "=", 
+   RowBox[{"datERbin", "*", " ", "1", "eV"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"ERbin2", "=", 
+   RowBox[{"datERbin2", "*", " ", "1", "eV"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.9401343655760727`*^9, 3.9401343804717927`*^9}, {
+  3.9402927362895436`*^9, 3.9402927625695*^9}},
+ CellLabel->
+  "In[160]:=",ExpressionUUID->"0643ba23-ddc2-4824-9510-00a072c865fa"],
+
+Cell[BoxData[
+ RowBox[{"(*", 
+  RowBox[{
+   RowBox[{"Ratebin7", "=", 
+    RowBox[{"Table", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"NIntegrate", "[", 
+        RowBox[{
+         RowBox[{"ExprateResolution", "[", 
+          RowBox[{"ERprime", ",", 
+           RowBox[{"7", "MeV"}], ",", "dfluxsolid", " ", ",", " ", 
+           RowBox[{"1", " ", "eV"}]}], "]"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"ERprime", ",", 
+           RowBox[{"ERbin", "[", 
+            RowBox[{"[", "i", "]"}], "]"}], ",", 
+           RowBox[{"ERbin", "[", 
+            RowBox[{"[", 
+             RowBox[{"i", "+", "1"}], "]"}], "]"}]}], "}"}]}], "]"}], "/", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"ERbin", "[", 
+          RowBox[{"[", 
+           RowBox[{"i", "+", "1"}], "]"}], "]"}], "-", 
+         RowBox[{"ERbin", "[", 
+          RowBox[{"[", "i", "]"}], "]"}]}], ")"}]}], ",", 
+      RowBox[{"{", 
+       RowBox[{"i", ",", "1", ",", 
+        RowBox[{
+         RowBox[{"Length", "[", "ERbin", "]"}], "-", "1"}]}], "}"}]}], 
+     "]"}]}], ";"}], "*)"}]], "Input",
+ CellChangeTimes->{{3.97546336071003*^9, 3.9754634208887568`*^9}, {
+   3.9754635483701057`*^9, 3.975463568551248*^9}, 3.975463638680286*^9, {
+   3.975525921860924*^9, 3.9755259253672523`*^9}, {3.975526256183872*^9, 
+   3.97552627947532*^9}, {3.979237968540861*^9, 3.979237970886487*^9}},
+ CellLabel->
+  "In[162]:=",ExpressionUUID->"87910f51-f693-49ae-b981-67a08c05afbb"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"Ratebin7", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"NIntegrate", "[", 
+       RowBox[{
+        RowBox[{"Exprate", "[", 
+         RowBox[{"ER", ",", 
+          RowBox[{"7", "MeV"}], ",", "dfluxsolid"}], "]"}], ",", 
+        RowBox[{"{", 
+         RowBox[{"ER", ",", 
+          RowBox[{"ERbin", "[", 
+           RowBox[{"[", "i", "]"}], "]"}], ",", 
+          RowBox[{"ERbin", "[", 
+           RowBox[{"[", 
+            RowBox[{"i", "+", "1"}], "]"}], "]"}]}], "}"}]}], "]"}], "/", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"ERbin", "[", 
+         RowBox[{"[", 
+          RowBox[{"i", "+", "1"}], "]"}], "]"}], "-", 
+        RowBox[{"ERbin", "[", 
+         RowBox[{"[", "i", "]"}], "]"}]}], ")"}]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "1", ",", 
+       RowBox[{
+        RowBox[{"Length", "[", "ERbin", "]"}], "-", "1"}]}], "}"}]}], "]"}]}],
+   ";"}]], "Input",
+ CellChangeTimes->{{3.9402928072606688`*^9, 3.9402928900209475`*^9}, 
+   3.940294185641517*^9, 3.940294866116316*^9, {3.975526250136252*^9, 
+   3.975526250594492*^9}, {3.97626497583864*^9, 3.976264978845778*^9}, {
+   3.97923796487464*^9, 3.979237966539744*^9}},
+ CellLabel->
+  "In[163]:=",ExpressionUUID->"f7e8145f-2a7c-4ffd-8b47-b3ef5ad2ba5e"],
+
+Cell[BoxData[
+ RowBox[{"Bin7plot", "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"BinPlotfS1", "[", 
+     RowBox[{
+      RowBox[{"ERbin", "/", "eV"}], ",", 
+      RowBox[{"Ratebin7", "*", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         SuperscriptBox["10", "3"], " ", "grams"}], ")"}], "*", "yr", "*", 
+       "eV"}], ",", "All", ",", "All"}], "]"}], "[", 
+    RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(R\)]\) [eV]\>\"", 
+     ",", "\"\<Events [1/yr/eV]\>\"", ",", "\"\<Event Rate\>\"", ",", "16"}], 
+    "]"}], "[", 
+   RowBox[{"\"\<LL\>\"", ",", "Medium", ",", 
+    RowBox[{"PlotStyle", "->", "Black"}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940292902462284*^9, 3.940292968067142*^9}, {
+   3.940293243394778*^9, 3.940293244729351*^9}, 3.942941992548314*^9, {
+   3.9762606836023893`*^9, 3.976260705997817*^9}, {3.976260741263002*^9, 
+   3.9762607436860123`*^9}},
+ CellLabel->
+  "In[164]:=",ExpressionUUID->"017cdad7-1ad2-4efd-9608-ad36beeaae36"],
+
+Cell[BoxData[
+ RowBox[{"(*", 
+  RowBox[{
+   RowBox[{"Ratebin2", "=", 
+    RowBox[{"Table", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"NIntegrate", "[", 
+        RowBox[{
+         RowBox[{"ExprateResolution", "[", 
+          RowBox[{"ERprime", ",", 
+           RowBox[{"2", "MeV"}], ",", "dfluxsolid", " ", ",", " ", 
+           RowBox[{"1", " ", "eV"}]}], "]"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"ERprime", ",", 
+           RowBox[{"ERbin2", "[", 
+            RowBox[{"[", "i", "]"}], "]"}], ",", 
+           RowBox[{"ERbin2", "[", 
+            RowBox[{"[", 
+             RowBox[{"i", "+", "1"}], "]"}], "]"}]}], "}"}]}], "]"}], "/", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"ERbin2", "[", 
+          RowBox[{"[", 
+           RowBox[{"i", "+", "1"}], "]"}], "]"}], "-", 
+         RowBox[{"ERbin2", "[", 
+          RowBox[{"[", "i", "]"}], "]"}]}], ")"}]}], ",", 
+      RowBox[{"{", 
+       RowBox[{"i", ",", "1", ",", 
+        RowBox[{
+         RowBox[{"Length", "[", "ERbin2", "]"}], "-", "1"}]}], "}"}]}], 
+     "]"}]}], ";"}], "*)"}]], "Input",
+ CellChangeTimes->{{3.976263686265984*^9, 3.976263731738497*^9}, {
+  3.97923795615625*^9, 3.979237958547966*^9}},
+ CellLabel->
+  "In[165]:=",ExpressionUUID->"17bece90-74ec-4b33-a57f-1f57b65832c8"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"Ratebin2", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"NIntegrate", "[", 
+       RowBox[{
+        RowBox[{"Exprate", "[", 
+         RowBox[{"ER", ",", 
+          RowBox[{"2", "MeV"}], ",", "dfluxsolid"}], "]"}], ",", 
+        RowBox[{"{", 
+         RowBox[{"ER", ",", 
+          RowBox[{"ERbin2", "[", 
+           RowBox[{"[", "i", "]"}], "]"}], ",", 
+          RowBox[{"ERbin2", "[", 
+           RowBox[{"[", 
+            RowBox[{"i", "+", "1"}], "]"}], "]"}]}], "}"}]}], "]"}], "/", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"ERbin2", "[", 
+         RowBox[{"[", 
+          RowBox[{"i", "+", "1"}], "]"}], "]"}], "-", 
+        RowBox[{"ERbin2", "[", 
+         RowBox[{"[", "i", "]"}], "]"}]}], ")"}]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "1", ",", 
+       RowBox[{
+        RowBox[{"Length", "[", "ERbin2", "]"}], "-", "1"}]}], "}"}]}], 
+    "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.9402933557586503`*^9, 3.9402933679718914`*^9}, 
+   3.940293406203704*^9, 3.940294198464908*^9, 3.9402948779936333`*^9, {
+   3.976264984410068*^9, 3.9762649868583193`*^9}, {3.979237950868379*^9, 
+   3.979237952873435*^9}},
+ CellLabel->
+  "In[166]:=",ExpressionUUID->"5357125b-9502-4158-8d0b-f73ef1012081"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"RatebinDif", "=", 
+   RowBox[{"Ratebin7", "-", "Ratebin2"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.9402934382143974`*^9, 3.940293454503919*^9}},
+ CellLabel->
+  "In[167]:=",ExpressionUUID->"125b00af-692d-413e-a6a4-fbe075b193ff"],
+
+Cell[BoxData[
+ RowBox[{"Bin2plot", "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"BinPlotfS1", "[", 
+     RowBox[{
+      RowBox[{"ERbin2", "/", "eV"}], ",", 
+      RowBox[{"Ratebin2", " ", "*", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         SuperscriptBox["10", "3"], " ", "grams"}], ")"}], "*", "yr", "*", 
+       "eV"}], ",", "All", ",", "All"}], "]"}], "[", 
+    RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(R\)]\) [eV]\>\"", 
+     ",", "\"\<Events [1/yr/eV]\>\"", ",", "\"\<Event Rate\>\"", ",", "16"}], 
+    "]"}], "[", 
+   RowBox[{"\"\<LL\>\"", ",", "Medium", ",", 
+    RowBox[{"PlotStyle", "->", "Cyan"}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.9402934694619007`*^9, 3.940293473088336*^9}, {
+  3.9402936202813635`*^9, 3.940293621879724*^9}, {3.942941967330628*^9, 
+  3.942941977409589*^9}},
+ CellLabel->
+  "In[168]:=",ExpressionUUID->"799fccbf-3197-42f0-b54b-0f9f1586a2bf"],
+
+Cell[BoxData[
+ RowBox[{"BinDifplot", "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"BinPlotfS1", "[", 
+     RowBox[{
+      RowBox[{"ERbin", "/", "eV"}], ",", 
+      RowBox[{"RatebinDif", "*", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         SuperscriptBox["10", "3"], " ", "grams"}], ")"}], "*", "yr", "*", 
+       "eV"}], ",", "All", ",", "All"}], "]"}], "[", 
+    RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(R\)]\) [eV]\>\"", 
+     ",", "\"\<Events [1/yr/eV]\>\"", ",", "\"\<Event Rate\>\"", ",", "16"}], 
+    "]"}], "[", 
+   RowBox[{"\"\<LL\>\"", ",", "Medium", ",", 
+    RowBox[{"PlotStyle", "->", 
+     RowBox[{"Darker", "[", "Green", "]"}]}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.940293638559761*^9, 3.940293683571849*^9}, 
+   3.942941981392304*^9},
+ CellLabel->
+  "In[169]:=",ExpressionUUID->"930235b9-2f33-4d70-b0ea-743bf019451f"],
+
+Cell[BoxData[
+ RowBox[{"Show", "[", 
+  RowBox[{"Bin7plot", ",", "Bin2plot", ",", "BinDifplot"}], "]"}]], "Input",
+ CellChangeTimes->{{3.9402936710434885`*^9, 3.940293703300857*^9}},
+ CellLabel->
+  "In[170]:=",ExpressionUUID->"8b9b97b7-0ff0-4bb1-8e62-824a1acfa707"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Expected", " ", "Rate", " ", "from", " ", "Curly", " ", "R"}], " ",
+   "*)"}]], "Input",
+ CellChangeTimes->{{3.940293808743908*^9, 3.9402938207984743`*^9}},
+ CellLabel->
+  "In[171]:=",ExpressionUUID->"facacfea-854f-4c93-821d-b11ed1d08971"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"No", " ", "resolution"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9402950797657957`*^9, 3.9402950851863947`*^9}},
+ CellLabel->
+  "In[172]:=",ExpressionUUID->"6f8cef47-f40f-4be5-aea4-5932259abe90"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"ERbin", "=", 
+   RowBox[{"datERbin", "*", " ", "1", "eV"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"CRbin7NoG", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"NIntegrate", "[", 
+       RowBox[{
+        RowBox[{"ExprateNoG", "[", 
+         RowBox[{"ER", ",", 
+          RowBox[{"7", " ", "MeV"}], ",", "intfluxsolid"}], "]"}], ",", 
+        RowBox[{"{", 
+         RowBox[{"ER", ",", 
+          RowBox[{"ERbin", "[", 
+           RowBox[{"[", "i", "]"}], "]"}], ",", 
+          RowBox[{"ERbin", "[", 
+           RowBox[{"[", 
+            RowBox[{"i", "+", "1"}], "]"}], "]"}]}], "}"}]}], "]"}], "/", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"ERbin", "[", 
+         RowBox[{"[", 
+          RowBox[{"i", "+", "1"}], "]"}], "]"}], "-", 
+        RowBox[{"ERbin", "[", 
+         RowBox[{"[", "i", "]"}], "]"}]}], ")"}]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "1", ",", 
+       RowBox[{
+        RowBox[{"Length", "[", "ERbin", "]"}], "-", "1"}]}], "}"}]}], "]"}]}],
+   ";"}]}], "Input",
+ CellChangeTimes->{{3.940295110588151*^9, 3.9402951641980743`*^9}, {
+  3.940295204673462*^9, 3.9402952069805765`*^9}},
+ CellLabel->
+  "In[173]:=",ExpressionUUID->"cfbfcd4b-cf6d-4a98-81a1-ed24bc8e1feb"],
+
+Cell[BoxData[
+ RowBox[{"Bin7plotCRNoG", "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"BinPlotfS1", "[", 
+     RowBox[{
+      RowBox[{"ERbin", "/", "eV"}], ",", 
+      RowBox[{"CRbin7NoG", "*", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         SuperscriptBox["10", "3"], " ", "grams"}], ")"}], "*", "yr", "*", 
+       "eV"}], ",", "All", ",", "All"}], "]"}], "[", 
+    RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(R\)]\) [eV]\>\"", 
+     ",", "\"\<Events [1/yr/eV]\>\"", ",", "\"\<Event Rate\>\"", ",", "16"}], 
+    "]"}], "[", 
+   RowBox[{"\"\<LL\>\"", ",", "Medium", ",", 
+    RowBox[{"PlotStyle", "->", 
+     RowBox[{"{", 
+      RowBox[{"Dashed", ",", 
+       RowBox[{"AbsoluteDashing", "[", 
+        RowBox[{"{", 
+         RowBox[{"8", ",", "4"}], "}"}], "]"}], ",", "Red"}], "}"}]}]}], 
+   "]"}]}]], "Input",
+ CellChangeTimes->{{3.940295185543168*^9, 3.940295194242791*^9}, {
+   3.940295237539032*^9, 3.9402952397617292`*^9}, 3.940301322753417*^9, {
+   3.9403014206331034`*^9, 3.940301437673255*^9}, {3.9403015275122027`*^9, 
+   3.94030153060036*^9}, 3.942942043037711*^9},
+ CellLabel->
+  "In[175]:=",ExpressionUUID->"1e048a95-c9a2-4374-902b-2d9684212a71"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Box", " ", "Resolution"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9402952546819153`*^9, 3.9402952578425303`*^9}},
+ CellLabel->
+  "In[176]:=",ExpressionUUID->"1da79d79-0520-4fa5-aed6-b02c9325c23a"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Curly", " ", "R", " ", "list"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9402991552092667`*^9, 3.940299162954222*^9}},
+ CellLabel->
+  "In[177]:=",ExpressionUUID->"9804e0f0-97f3-4a9f-bc39-55b92654a98b"],
+
+Cell[BoxData[{
+ RowBox[{"CRlistbox", "=", 
+  RowBox[{"CRloopBox", "[", 
+   RowBox[{
+    RowBox[{"0.11", " ", "MeV"}], ",", 
+    RowBox[{"7", " ", "MeV"}], ",", 
+    RowBox[{"0.01", " ", "MeV"}], ",", 
+    RowBox[{"1", "eV"}]}], "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{"CRlist", "=", 
+  RowBox[{"CRloop", "[", 
+   RowBox[{
+    RowBox[{"0.11", " ", "MeV"}], ",", 
+    RowBox[{"7", " ", "MeV"}], ",", 
+    RowBox[{"0.01", " ", "MeV"}], ",", 
+    RowBox[{"1", "eV"}]}], "]"}]}]}], "Input",
+ CellChangeTimes->{{3.9402991659951363`*^9, 3.9402991756873364`*^9}, {
+  3.953328903124749*^9, 3.953328908220791*^9}, {3.953329268088621*^9, 
+  3.9533292684322853`*^9}, {3.964227394109167*^9, 3.9642273967399607`*^9}},
+ CellLabel->
+  "In[247]:=",ExpressionUUID->"d5823587-e2d7-4106-b76d-31e4c6e256f5"],
+
+Cell[BoxData[
+ RowBox[{"CRplotlist", "=", 
+  RowBox[{"Table", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"CRlistbox", "[", 
+      RowBox[{"[", "i", "]"}], "]"}], "[", 
+     RowBox[{"x", " ", "MeV"}], "]"}], ",", 
+    RowBox[{"{", 
+     RowBox[{"i", ",", "1", ",", 
+      RowBox[{"Length", "[", "CRlistbox", "]"}]}], "}"}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.9403007226246243`*^9, 3.9403007840626717`*^9}},
+ CellLabel->
+  "In[300]:=",ExpressionUUID->"c8337131-9bd5-49f0-8706-a87b3f229a26"],
+
+Cell[BoxData[
+ RowBox[{"Plot", "[", 
+  RowBox[{"CRplotlist", ",", 
+   RowBox[{"{", 
+    RowBox[{"x", ",", "0.11", ",", "7"}], "}"}], ",", 
+   RowBox[{"PlotRange", "->", "All"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.940300825732422*^9, 3.940300862545849*^9}},
+ CellLabel->
+  "In[301]:=",ExpressionUUID->"2c17b25b-71fd-4815-bff5-8a2a8efccdab"],
+
+Cell[BoxData[
+ RowBox[{"CRbin7Box", "=", 
+  RowBox[{"Table", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"NIntegrate", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{
+         RowBox[{"CRlistbox", "[", 
+          RowBox[{"[", "i", "]"}], "]"}], "[", "x", "]"}], "*", 
+        RowBox[{"intfluxsolid", "[", "x", "]"}]}], ",", 
+       RowBox[{"{", 
+        RowBox[{"x", ",", 
+         RowBox[{"0.11", " ", "MeV"}], ",", 
+         RowBox[{"7", "MeV"}]}], "}"}]}], "]"}], "/", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"ERbin", "[", 
+        RowBox[{"[", 
+         RowBox[{"i", "+", "1"}], "]"}], "]"}], "-", 
+       RowBox[{"ERbin", "[", 
+        RowBox[{"[", "i", "]"}], "]"}]}], ")"}]}], ",", 
+    RowBox[{"{", 
+     RowBox[{"i", ",", "1", ",", 
+      RowBox[{
+       RowBox[{"Length", "[", "ERbin", "]"}], "-", "1"}]}], "}"}]}], 
+   "]"}]}]], "Input",
+ CellChangeTimes->{{3.94030111656199*^9, 3.9403011700960274`*^9}, {
+   3.9403012100056086`*^9, 3.9403012458870897`*^9}, 3.940301575082379*^9},
+ CellLabel->
+  "In[302]:=",ExpressionUUID->"4a0230a0-e102-42e1-985c-8258dcf6b2e3"],
+
+Cell[BoxData[
+ RowBox[{"Bin7plotCRBox", "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"BinPlotfS1", "[", 
+     RowBox[{
+      RowBox[{"ERbin", "/", "eV"}], ",", 
+      RowBox[{"CRbin7Box", "*", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         SuperscriptBox["10", "3"], " ", "grams"}], ")"}], "*", "yr", "*", 
+       "eV"}], ",", "All", ",", "All"}], "]"}], "[", 
+    RowBox[{"\"\<\!\(\*SubscriptBox[\(E\), \(R\)]\) [eV]\>\"", 
+     ",", "\"\<Events [1/yr/eV/kg]\>\"", ",", "\"\<Event Rate\>\"", ",", 
+     "16"}], "]"}], "[", 
+   RowBox[{"\"\<LL\>\"", ",", "Medium", ",", 
+    RowBox[{"PlotStyle", "->", 
+     RowBox[{"{", 
+      RowBox[{"Dashed", ",", 
+       RowBox[{"AbsoluteDashing", "[", 
+        RowBox[{"{", 
+         RowBox[{"4", ",", "8"}], "}"}], "]"}], ",", "Green"}], "}"}]}]}], 
+   "]"}]}]], "Input",
+ CellChangeTimes->{{3.9403012786122017`*^9, 3.9403013099452*^9}, {
+   3.940301379060197*^9, 3.940301408353239*^9}, {3.9403014440263424`*^9, 
+   3.9403014454242587`*^9}, {3.9403015402634797`*^9, 3.940301542367354*^9}, {
+   3.940301597042933*^9, 3.94030159788206*^9}, {3.9421576821266613`*^9, 
+   3.9421576828661737`*^9}, 3.942942026358859*^9},
+ CellLabel->
+  "In[303]:=",ExpressionUUID->"6d58b61e-698c-490e-83d1-fa846e6f04ab"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Compare", " ", "all"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9403017582342834`*^9, 3.9403017643175535`*^9}},
+ CellLabel->
+  "In[171]:=",ExpressionUUID->"fa58a93d-c2fc-4997-a97d-2bac66b642bc"],
+
+Cell[BoxData[
+ RowBox[{"Show", "[", 
+  RowBox[{"Bin7plot", ",", "Bin7plotCRNoG", ",", "Bin7plotCRBox"}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.94030134371529*^9, 3.9403013685245843`*^9}, {
+  3.9403014581012774`*^9, 3.940301458537297*^9}, {3.940301556100366*^9, 
+  3.940301590500473*^9}, {3.940302084605445*^9, 3.9403020982688675`*^9}},
+ CellLabel->
+  "In[304]:=",ExpressionUUID->"c6023852-5951-4594-9ff3-27122b4bc830"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", "Minimization", " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9403021363521304`*^9, 3.940302140885833*^9}},
+ CellLabel->
+  "In[173]:=",ExpressionUUID->"9c760b98-2683-4e0b-bfff-4240ce977fda"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Curly", " ", "R", " ", "matrix"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.94030215109649*^9, 3.9403021577668533`*^9}},
+ CellLabel->
+  "In[174]:=",ExpressionUUID->"fc4a04ba-763b-4e1c-b786-13232be5a202"],
+
+Cell[BoxData[
+ RowBox[{"(*", 
+  RowBox[{"CRlistboxdat", "=", 
+   RowBox[{"CRloopBoxData", "[", 
+    RowBox[{
+     RowBox[{"0.11", " ", "MeV"}], ",", 
+     RowBox[{"7", " ", "MeV"}], ",", 
+     RowBox[{"0.01", " ", "MeV"}], ",", 
+     RowBox[{"1", "eV"}]}], "]"}]}], "*)"}]], "Input",
+ CellChangeTimes->{{3.9403074278038177`*^9, 3.9403074327907977`*^9}, {
+  3.942975917657402*^9, 
+  3.942975925371595*^9}},ExpressionUUID->"7356f37b-a441-4c3e-9e29-\
+5e9923b2f585"],
+
+Cell[BoxData[
+ RowBox[{"(*", 
+  RowBox[{"ListLinePlot", "[", 
+   RowBox[{"CRlistboxdat", ",", 
+    RowBox[{"PlotRange", "->", "All"}]}], "]"}], "*)"}]], "Input",
+ CellChangeTimes->{{3.940307861340625*^9, 3.9403079051943684`*^9}, {
+  3.9429759289371843`*^9, 
+  3.9429759316417933`*^9}},ExpressionUUID->"dd4b89fb-67bf-4da5-ac1e-\
+eaf7e5b499ce"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", "Minimization", " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9403079863628817`*^9, 3.9403079930454164`*^9}},
+ CellLabel->
+  "In[170]:=",ExpressionUUID->"5a1073fd-d4a0-4f56-b776-4e1f70d80f10"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", "Exit", " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.940128181425396*^9, 
+  3.9401281852686253`*^9}},ExpressionUUID->"afeb9c51-2b9a-48fe-8b07-\
+32c2e140c940"],
+
+Cell[BoxData[
+ RowBox[{"NotebookClose", "[", "]"}]], "Input",
+ CellChangeTimes->{{3.9401281879646378`*^9, 
+  3.9401281919476213`*^9}},ExpressionUUID->"743a1777-6828-490b-8f33-\
+a890f5a91771"]
+},
+WindowSize->{855, 954},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"14.3 for Mac OS X ARM (64-bit) (July 8, 2025)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"204be460-3f79-49fa-bfa8-f24c08948c68"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 177, 3, 29, "Input",ExpressionUUID->"7b93c569-1224-4e4c-a120-9ec6d2ad3708"],
+Cell[738, 25, 246, 5, 29, "Input",ExpressionUUID->"08ff334c-c30f-4cef-aaf0-87937f7571b1"],
+Cell[987, 32, 1403, 39, 92, "Input",ExpressionUUID->"7ecc39cc-3209-4355-ab9e-cef9576b4286"],
+Cell[2393, 73, 359, 7, 29, "Input",ExpressionUUID->"b30420f9-3963-450b-a58d-bd7f508ce135"],
+Cell[2755, 82, 119, 2, 29, "Input",ExpressionUUID->"35bc332a-5f40-4928-8070-881a20ced662"],
+Cell[2877, 86, 448, 10, 29, "Input",ExpressionUUID->"fa0f789d-c2c3-4984-834c-b58230c47ed3"],
+Cell[3328, 98, 1246, 37, 92, "Input",ExpressionUUID->"ce014576-d5bd-49ab-95a2-7b04ab29ae61"],
+Cell[4577, 137, 354, 7, 29, "Input",ExpressionUUID->"0e1efb1d-8885-4e40-9c7f-cb27e7924f8f"],
+Cell[4934, 146, 419, 9, 29, "Input",ExpressionUUID->"1d1877a2-439d-42fe-bfc4-10e39cf1b76a"],
+Cell[5356, 157, 1496, 37, 74, "Input",ExpressionUUID->"218aad33-8d82-4e25-b71e-658e312c6b8a"],
+Cell[6855, 196, 1282, 34, 74, "Input",ExpressionUUID->"afcfb12b-e52b-47f1-b7a2-560e5a117d9f"],
+Cell[8140, 232, 245, 5, 29, "Input",ExpressionUUID->"cfd5bf22-04fa-43ca-996a-b96b7d776c73"],
+Cell[8388, 239, 433, 10, 49, "Input",ExpressionUUID->"0643ba23-ddc2-4824-9510-00a072c865fa"],
+Cell[8824, 251, 1450, 37, 70, "Input",ExpressionUUID->"87910f51-f693-49ae-b981-67a08c05afbb"],
+Cell[10277, 290, 1296, 35, 49, "Input",ExpressionUUID->"f7e8145f-2a7c-4ffd-8b47-b3ef5ad2ba5e"],
+Cell[11576, 327, 950, 22, 72, "Input",ExpressionUUID->"017cdad7-1ad2-4efd-9608-ad36beeaae36"],
+Cell[12529, 351, 1281, 35, 90, "Input",ExpressionUUID->"17bece90-74ec-4b33-a57f-1f57b65832c8"],
+Cell[13813, 388, 1285, 35, 49, "Input",ExpressionUUID->"5357125b-9502-4158-8d0b-f73ef1012081"],
+Cell[15101, 425, 265, 6, 29, "Input",ExpressionUUID->"125b00af-692d-413e-a6a4-fbe075b193ff"],
+Cell[15369, 433, 881, 21, 72, "Input",ExpressionUUID->"799fccbf-3197-42f0-b54b-0f9f1586a2bf"],
+Cell[16253, 456, 840, 21, 72, "Input",ExpressionUUID->"930235b9-2f33-4d70-b0ea-743bf019451f"],
+Cell[17096, 479, 264, 5, 29, "Input",ExpressionUUID->"8b9b97b7-0ff0-4bb1-8e62-824a1acfa707"],
+Cell[17363, 486, 285, 6, 29, "Input",ExpressionUUID->"facacfea-854f-4c93-821d-b11ed1d08971"],
+Cell[17651, 494, 247, 5, 29, "Input",ExpressionUUID->"6f8cef47-f40f-4be5-aea4-5932259abe90"],
+Cell[17901, 501, 1280, 36, 90, "Input",ExpressionUUID->"cfbfcd4b-cf6d-4a98-81a1-ed24bc8e1feb"],
+Cell[19184, 539, 1155, 28, 92, "Input",ExpressionUUID->"1e048a95-c9a2-4374-902b-2d9684212a71"],
+Cell[20342, 569, 248, 5, 29, "Input",ExpressionUUID->"1da79d79-0520-4fa5-aed6-b02c9325c23a"],
+Cell[20593, 576, 252, 5, 29, "Input",ExpressionUUID->"9804e0f0-97f3-4a9f-bc39-55b92654a98b"],
+Cell[20848, 583, 788, 19, 49, "Input",ExpressionUUID->"d5823587-e2d7-4106-b76d-31e4c6e256f5"],
+Cell[21639, 604, 497, 13, 29, "Input",ExpressionUUID->"c8337131-9bd5-49f0-8706-a87b3f229a26"],
+Cell[22139, 619, 345, 8, 29, "Input",ExpressionUUID->"2c17b25b-71fd-4815-bff5-8a2a8efccdab"],
+Cell[22487, 629, 1090, 31, 70, "Input",ExpressionUUID->"4a0230a0-e102-42e1-985c-8258dcf6b2e3"],
+Cell[23580, 662, 1239, 29, 92, "Input",ExpressionUUID->"6d58b61e-698c-490e-83d1-fa846e6f04ab"],
+Cell[24822, 693, 245, 5, 29, "Input",ExpressionUUID->"fa58a93d-c2fc-4997-a97d-2bac66b642bc"],
+Cell[25070, 700, 422, 8, 29, "Input",ExpressionUUID->"c6023852-5951-4594-9ff3-27122b4bc830"],
+Cell[25495, 710, 223, 4, 29, "Input",ExpressionUUID->"9c760b98-2683-4e0b-bfff-4240ce977fda"],
+Cell[25721, 716, 253, 5, 29, "Input",ExpressionUUID->"fc4a04ba-763b-4e1c-b786-13232be5a202"],
+Cell[25977, 723, 462, 12, 29, "Input",ExpressionUUID->"7356f37b-a441-4c3e-9e29-5e9923b2f585"],
+Cell[26442, 737, 342, 8, 29, "Input",ExpressionUUID->"dd4b89fb-67bf-4da5-ac1e-eaf7e5b499ce"],
+Cell[26787, 747, 225, 4, 29, "Input",ExpressionUUID->"5a1073fd-d4a0-4f56-b776-4e1f70d80f10"],
+Cell[27015, 753, 192, 4, 29, "Input",ExpressionUUID->"afeb9c51-2b9a-48fe-8b07-32c2e140c940"],
+Cell[27210, 759, 191, 4, 29, "Input",ExpressionUUID->"743a1777-6828-490b-8f33-a890f5a91771"]
+}
+]
+*)
+

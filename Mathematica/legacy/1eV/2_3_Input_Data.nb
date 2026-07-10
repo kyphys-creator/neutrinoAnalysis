@@ -1,0 +1,143 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 13.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      5015,        135]
+NotebookOptionsPosition[      4118,        115]
+NotebookOutlinePosition[      4509,        131]
+CellTagsIndexPosition[      4466,        128]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Data", " ", "Input"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9401279517167363`*^9, 
+  3.9401279654916954`*^9}},ExpressionUUID->"a358c7a5-3cc0-4ca7-9a4d-\
+019d74defa80"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"ER", " ", "bin"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9402920621906967`*^9, 
+  3.9402920665957017`*^9}},ExpressionUUID->"2cacee8d-4b49-4874-9c52-\
+70c9fc99a2d8"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"datERbin", "=", 
+   RowBox[{"{", 
+    RowBox[{
+    "1.", ",", "3.", ",", "5.", ",", "7.", ",", "9.", ",", "11.", ",", "13.", 
+     ",", "15.", ",", "17.", ",", "19.", ",", "21.", ",", "23.", ",", "25.", 
+     ",", "27.", ",", "29.", ",", "31.", ",", "33.", ",", "35.", ",", "37.", 
+     ",", "39.", ",", "41.", ",", "43.", ",", "45.", ",", "47.", ",", "49.", 
+     ",", "51.", ",", "56.", ",", "61.", ",", "66.", ",", "71.", ",", "81.", 
+     ",", "120."}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"datERbin2", "=", 
+    RowBox[{"{", 
+     RowBox[{
+     "1.", ",", "3.", ",", "5.", ",", "7.", ",", "9.", ",", "11.", ",", "13.",
+       ",", "15.", ",", "17.", ",", "19.", ",", "21.", ",", "23.", ",", "25.",
+       ",", "27.", ",", "29.", ",", "31.", ",", "33.", ",", "35.", ",", "37.",
+       ",", "39.", ",", "41.", ",", "43.", ",", "45.", ",", "47.", ",", "49.",
+       ",", "51.", ",", "56.", ",", "61.", ",", "66.", ",", "71.", ",", "81.",
+       ",", "116."}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+  RowBox[{"(*", 
+   RowBox[{
+    RowBox[{"datERbin", "=", 
+     RowBox[{"{", 
+      RowBox[{"1.", ",", "5.", ",", "13.", ",", "21.", ",", "120."}], "}"}]}],
+     ";"}], "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"(*", 
+   RowBox[{
+    RowBox[{"datERbin2", "=", 
+     RowBox[{"{", 
+      RowBox[{"1.", ",", "5.", ",", "13.", ",", "21.", ",", "116."}], "}"}]}],
+     ";"}], "*)"}]}]}], "Input",
+ CellChangeTimes->{{3.9402920902093678`*^9, 3.9402921229163046`*^9}, {
+  3.9485558263732433`*^9, 3.9485558362312*^9}, {3.948555869427268*^9, 
+  3.948555883846299*^9}, {3.948563869568652*^9, 3.9485638980786657`*^9}, {
+  3.948565271226243*^9, 3.948565306325694*^9}, {3.948572676129427*^9, 
+  3.948572697380146*^9}},ExpressionUUID->"52e0baf1-9bdb-4482-b8a1-\
+eb9f4dc0d744"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{"Expected", " ", "Differential", " ", "Flux"}], " ", 
+  "*)"}]], "Input",
+ CellChangeTimes->{{3.940128034523847*^9, 
+  3.9401280568617315`*^9}},ExpressionUUID->"eaaf3bfc-50f0-4cef-97b9-\
+b09ab072a598"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"datdNdEsolid", "=", 
+   RowBox[{"Import", "[", 
+    RowBox[{
+     RowBox[{"FileNameJoin", "[", 
+      RowBox[{"Direc", ",", "\"\<dNdEsolid.csv\>\""}], "]"}], ",", 
+     "\"\<Data\>\""}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"datdNdEdash", "=", 
+   RowBox[{"Import", "[", 
+    RowBox[{
+     RowBox[{"FileNameJoin", "[", 
+      RowBox[{"Direc", ",", "\"\<dNdEdash.csv\>\""}], "]"}], ",", 
+     "\"\<Data\>\""}], "]"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.948555675177972*^9, 
+  3.9485556912904654`*^9}},ExpressionUUID->"f0b8be9c-c3a3-46aa-82f8-\
+2291cfe703fc"],
+
+Cell[BoxData[
+ RowBox[{"(*", " ", "Exit", " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.940128181425396*^9, 
+  3.9401281852686253`*^9}},ExpressionUUID->"a02e6274-fe70-461a-8222-\
+e15c5920516d"],
+
+Cell[BoxData[
+ RowBox[{"NotebookClose", "[", "]"}]], "Input",
+ CellChangeTimes->{{3.9401281879646378`*^9, 
+  3.9401281919476213`*^9}},ExpressionUUID->"fe056fa3-db48-42cf-98bb-\
+16d8328da514"]
+},
+WindowSize->{1710, 976},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"14.3 for Mac OS X ARM (64-bit) (July 8, 2025)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"d267b151-2d60-4ff5-a663-bc161d2147e3"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 221, 5, 29, "Input",ExpressionUUID->"a358c7a5-3cc0-4ca7-9a4d-019d74defa80"],
+Cell[782, 27, 217, 5, 29, "Input",ExpressionUUID->"2cacee8d-4b49-4874-9c52-70c9fc99a2d8"],
+Cell[1002, 34, 1848, 40, 90, "Input",ExpressionUUID->"52e0baf1-9bdb-4482-b8a1-eb9f4dc0d744"],
+Cell[2853, 76, 246, 6, 29, "Input",ExpressionUUID->"eaaf3bfc-50f0-4cef-97b9-b09ab072a598"],
+Cell[3102, 84, 623, 17, 49, "Input",ExpressionUUID->"f0b8be9c-c3a3-46aa-82f8-2291cfe703fc"],
+Cell[3728, 103, 192, 4, 29, "Input",ExpressionUUID->"a02e6274-fe70-461a-8222-e15c5920516d"],
+Cell[3923, 109, 191, 4, 29, "Input",ExpressionUUID->"fe056fa3-db48-42cf-98bb-16d8328da514"]
+}
+]
+*)
+
