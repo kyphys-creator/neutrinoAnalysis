@@ -1,0 +1,13 @@
+{
+  "index": 8,
+  "background_scenario": "b",
+  "T": 20,
+  "threshold": 0.001,
+  "energy_MeV": 0.261340782122905,
+  "best_fit_raw": 10383402.186168052,
+  "best_fit_physical": 1228382065332.9497,
+  "lower_raw": 9070077.447418746,
+  "upper_raw": 19154363.373160094,
+  "lower_physical": 1073012512452.9896,
+  "upper_physical": 2266008387097.199
+}

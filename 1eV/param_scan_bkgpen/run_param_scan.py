@@ -25,7 +25,7 @@ from neutrino_analysis_band import NeutrinoAnalysis
 
 OUTDIR    = 'param_scan_bkgpen'
 SCENARIOS = ['a', 'b']
-NPARS     = [10, 20]
+NPARS     = [180]
 TARGET_E  = [0.40, 0.60, 0.90]          # MeV; band measured at nearest index
 LEVELS    = (0.678, 0.954)
 MC = dict(num_pseudo_data=40, n_pseudo_edge=300, step=1.5, rel_tol=0.04,
@@ -53,7 +53,7 @@ for scen in SCENARIOS:
             print(f"scen={scen} n={n:3d} E~{E:.2f} idx={idx:3d} "
                   f"(E={eb[idx]:.3f}) done", flush=True)
 
-out = os.path.join(OUTDIR, 'param_scan_results_nNum2.json')
+out = os.path.join(OUTDIR, 'param_scan_results_nNum.json')
 with open(out, 'w') as f:
     json.dump(records, f, indent=1)
 print(f"WROTE {out}  records={len(records)}", flush=True)

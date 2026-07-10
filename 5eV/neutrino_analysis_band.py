@@ -1321,9 +1321,134 @@ class NeutrinoAnalysis:
                          f'flux_with_bands_bkg_{self.background_scenario}.pdf')
             plt.savefig(fname); print(f"Plot saved as {fname}")
 
+    # ---------- degeneracy band (Δχ² < threshold) ----------
+    _EB_MIN = 0.41   # low edge of the reconstructed-flux energy grid (MeV)
+
+    def _degeneracy_edges(self, index, threshold, res_x, chi2min):
+        """Lower/upper *raw* flux values where the profiled Δχ²/c first exceeds
+        ``threshold`` on each side of the best fit for one parameter. The
+        profiled χ² is convex in the fixed value, so each side has a single
+        crossing: bracket outward, then bisect."""
+        data = self.data_vector
+
+        def dchi(v):
+            r = self.optimize_with_fixed_parameter(data, index, float(v),
+                                                   x0=res_x.copy())
+            return r.fun / self.c - chi2min
+
+        def edge(direction, factor=1.4, nbracket=40, nbisect=40):
+            v_in, v_out, v = float(res_x[index]), None, float(res_x[index])
+            for _ in range(nbracket):
+                v = v * factor if direction > 0 else v / factor
+                if v <= 0:
+                    return 0.0
+                if dchi(v) > threshold:
+                    v_out = v
+                    break
+                v_in = v
+            if v_out is None:
+                return v_in                        # no crossing within range
+            lo, hi = (v_in, v_out) if direction > 0 else (v_out, v_in)
+            for _ in range(nbisect):
+                m = 0.5 * (lo + hi)
+                inside = dchi(m) < threshold
+                if direction > 0:
+                    lo, hi = (m, hi) if inside else (lo, m)
+                else:
+                    lo, hi = (lo, m) if inside else (m, hi)
+            return 0.5 * (lo + hi)
+
+        return edge(-1), edge(+1)
+
+    def _degeneracy_setup(self, x0=None):
+        """Common prep for the degeneracy scan: ensure a best fit, and disable
+        vertex selection (only χ² is needed). Returns (res_x, chi2min, restore)."""
+        if self.result is None:
+            self.optimize(self.data_vector)
+        res_x = self.result.x if x0 is None else np.asarray(x0, dtype=float)
+        chi2min = self.result.fun / self.c
+        _be = getattr(self, '_backend', None)
+        _has_vs = hasattr(_be, 'vertex_select')
+        _saved = _be.vertex_select if _has_vs else None
+        if _has_vs:
+            _be.vertex_select = False
+
+        def restore():
+            if _has_vs:
+                _be.vertex_select = _saved
+        return res_x, chi2min, restore
+
+    def compute_degeneracy_band(self, indices, threshold=1e-3, x0=None, eb=None):
+        """Per-index degeneracy interval: the range of a single flux parameter
+        over which the profiled Δχ²/c (re-optimising all other parameters)
+        stays below ``threshold`` around the best fit — the intrinsic
+        under-determination band, not a statistical one.
+
+        Returns a sorted array of (energy_MeV, lower_phys, upper_phys) in
+        physical flux units (cm⁻² s⁻¹)."""
+        res_x, chi2min, restore = self._degeneracy_setup(x0)
+        unit = self.cm ** 2 * self.sec
+        if eb is None:
+            eb = np.linspace(self._EB_MIN, 2, self.n)
+        try:
+            rows = []
+            for idx in sorted({int(i) for i in indices}):
+                lo, hi = self._degeneracy_edges(idx, threshold, res_x, chi2min)
+                rows.append((eb[idx], lo * unit, hi * unit))
+        finally:
+            restore()
+        rows.sort()
+        return np.array(rows)
+
+    def save_degeneracy_bands(self, indices, threshold=1e-3, outdir=None,
+                              x0=None, verbose=True):
+        """Pre-compute and save the degeneracy interval for each index as one
+        JSON file, mirroring ``save_band``. Files land in ``outdir`` (default
+        ``<scenario_dir>/degeneracy``) named ``degeneracy_bkg<scen>_idx<NNN>.json``
+        and store raw + physical lower/upper, best fit, threshold and T."""
+        if outdir is None:
+            outdir = os.path.join(self.scenario_dir, 'degeneracy')
+        os.makedirs(outdir, exist_ok=True)
+        res_x, chi2min, restore = self._degeneracy_setup(x0)
+        unit = self.cm ** 2 * self.sec
+        eb = np.linspace(self._EB_MIN, 2, self.n)
+        paths = []
+        try:
+            for idx in sorted({int(i) for i in indices}):
+                lo, hi = self._degeneracy_edges(idx, threshold, res_x, chi2min)
+                obj = {
+                    'index': int(idx),
+                    'background_scenario': self.background_scenario,
+                    'T': self.T,
+                    'threshold': float(threshold),
+                    'energy_MeV': float(eb[idx]),
+                    'best_fit_raw': float(res_x[idx]),
+                    'best_fit_physical': float(res_x[idx] * unit),
+                    'lower_raw': float(lo),
+                    'upper_raw': float(hi),
+                    'lower_physical': float(lo * unit),
+                    'upper_physical': float(hi * unit),
+                }
+                path = os.path.join(
+                    outdir,
+                    f'degeneracy_bkg{self.background_scenario}_idx{idx:03d}.json')
+                with open(path, 'w') as f:
+                    json.dump(obj, f, indent=2)
+                paths.append(path)
+                if verbose:
+                    print(f'  degeneracy idx{idx:03d}: '
+                          f'[{lo*unit:.3e}, {hi*unit:.3e}]  -> {path}', flush=True)
+        finally:
+            restore()
+        return paths
+
     def plot_band_comparison(self, groups, level=0.954, show_theory=True,
                              optimized=None, save=True, fname=None,
-                             ylim=None, logy=False, style='fill', norm=1e12):
+                             ylim=None, logy=False, style='fill', norm=1e12,
+                             degeneracy=False, degeneracy_indices=None,
+                             degeneracy_threshold=1e-3, degeneracy_color='#7030a0',
+                             degeneracy_label=r'Degeneracy $\Delta\chi^2<10^{-3}$',
+                             degeneracy_files=None):
         """
         Overlay one confidence level's band from several scenarios on one axis.
 
@@ -1344,11 +1469,19 @@ class NeutrinoAnalysis:
         ``{label: value}`` where value is either a ``NeutrinoAnalysis`` instance
         (its ``result.x`` is used) or a raw flux array. Labels should match
         ``groups`` so colours line up.
+
+        ``degeneracy=True`` also overlays the intrinsic degeneracy band
+        (profiled Δχ²/c < ``degeneracy_threshold``) for *this* analysis,
+        computed on the fly via ``compute_degeneracy_band``. By default it is
+        evaluated at the union of indices found in ``groups``' band files;
+        pass ``degeneracy_indices`` to override. ``self.optimize`` is run first
+        if needed, so the band matches this instance's background scenario.
         """
         eb = np.linspace(0.41, 2, self.n)
         cyc = ['C0', 'C1', 'C2', 'C3', 'C4']
         group_color = {label: cyc[k % len(cyc)]
                        for k, label in enumerate(groups)}
+        deg_idx_set = set()
 
         def match_level(b):
             for lv in b['band_physical']:
@@ -1390,6 +1523,7 @@ class NeutrinoAnalysis:
             color = group_color[label]
             rows = []
             for b in bands:
+                deg_idx_set.add(int(b['index']))
                 lv = match_level(b)
                 if lv is None:
                     continue
@@ -1417,6 +1551,32 @@ class NeutrinoAnalysis:
                              fmt='none', ms=2.5, color=color, ecolor=color,
                              elinewidth=1.3, capsize=2, alpha=0.75,
                              zorder=4, label=lbl)
+
+        if degeneracy or degeneracy_files is not None:
+            if degeneracy_files is not None:
+                # load pre-computed per-index degeneracy JSONs (save_degeneracy_bands)
+                files = (sorted(glob.glob(degeneracy_files))
+                         if isinstance(degeneracy_files, str) else list(degeneracy_files))
+                rows = []
+                for p in files:
+                    dd = load_degeneracy_band(p)
+                    rows.append((eb[dd['index']], dd['lower_physical'],
+                                 dd['upper_physical']))
+                rows.sort()
+                dband = np.array(rows) if rows else np.empty((0, 3))
+            else:
+                didx = degeneracy_indices if degeneracy_indices is not None else sorted(deg_idx_set)
+                dband = (self.compute_degeneracy_band(didx, threshold=degeneracy_threshold, eb=eb)
+                         if len(didx) else np.empty((0, 3)))
+            if len(dband):
+                dE, dlo, dhi = dband[:, 0], dband[:, 1] / norm, dband[:, 2] / norm
+                ok = np.isfinite(dlo) & np.isfinite(dhi)
+                plt.fill_between(dE[ok], dlo[ok], dhi[ok], color=degeneracy_color,
+                                 alpha=0.22, zorder=1.5, label=degeneracy_label)
+                plt.plot(dE[ok], dlo[ok], color=degeneracy_color, lw=1.0, zorder=3)
+                plt.plot(dE[ok], dhi[ok], color=degeneracy_color, lw=1.0, zorder=3)
+            else:
+                print("[warn] degeneracy requested but no data to draw")
 
         plt.xscale('log')
         if logy:
@@ -1577,3 +1737,9 @@ def load_band(path):
     obj['band_raw'] = {float(k): tuple(v) for k, v in obj['band_raw'].items()}
     obj['band_physical'] = {float(k): tuple(v) for k, v in obj['band_physical'].items()}
     return obj
+
+
+def load_degeneracy_band(path):
+    """Load a degeneracy JSON written by ``NeutrinoAnalysis.save_degeneracy_bands``."""
+    with open(path) as f:
+        return json.load(f)
