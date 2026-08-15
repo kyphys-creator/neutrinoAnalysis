@@ -1724,7 +1724,7 @@ def _phi_ylabel(norm):
     e = int(round(np.log10(norm)))
     if e == 0:
         return r"$\Phi$ [cm$^{-2}$sec$^{-1}$]"
-    return rf"$\Phi$ [$10^{{{e}}}$ cm$^{{-2}}$sec$^{{-1}}$]"
+    return rf"$\Phi_{{<~2~\text{{MeV}}}}$ [$10^{{{e}}}$ cm$^{{-2}}$sec$^{{-1}}$]"
 
 
 def scan_parameter(analysis, data, index, num_points=21, scan_range=0.35):
