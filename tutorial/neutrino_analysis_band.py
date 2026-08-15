@@ -1124,7 +1124,9 @@ class NeutrinoAnalysis:
 
     def plot_band_comparison(self, groups, level=0.954, show_theory=True,
                              optimized=None, save=True, fname=None,
-                             ylim=None, logy=False, style='fill', norm=1e12):
+                             ylim=None, logy=False, style='fill', norm=1e12,
+                             show_errorbars=True,
+                             bestfit_color='#0072B2', bestfit_marker='o'):
         """
         Overlay one confidence level's band from several scenarios on one axis.
 
@@ -1188,7 +1190,7 @@ class NeutrinoAnalysis:
                 plt.plot(xs[ok], lo[ok], color=color, lw=1.0, zorder=3)
                 plt.plot(xs[ok], hi[ok], color=color, lw=1.0, zorder=3)
                 lbl = None
-            if style in ('errorbar', 'both'):
+            if style in ('errorbar', 'both') and show_errorbars:
                 lo_err = np.where(np.isfinite(lo), np.maximum(cen - lo, 0.0), 0.0)
                 hi_err = np.where(np.isfinite(hi), np.maximum(hi - cen, 0.0), 0.0)
                 plt.errorbar(xs, cen, yerr=[lo_err, hi_err],
@@ -1207,9 +1209,9 @@ class NeutrinoAnalysis:
                     unit = self.cm ** 2 * self.sec
                     nn = len(xr)
                 eb_g = np.linspace(0.41, 2, nn)
-                plt.scatter(eb_g, np.asarray(xr) * unit / norm, s=6, marker='x',
-                            color=group_color.get(label, 'k'), zorder=6,
-                            label=f'{label} optimized')
+                plt.scatter(eb_g, np.asarray(xr) * unit / norm, s=6,
+                            marker=bestfit_marker, color=bestfit_color,
+                            zorder=6, label=f'{label} optimized')
 
         if show_theory:
             x, Phi, x2, Phidashed = self._calculate_integrated_flux()
